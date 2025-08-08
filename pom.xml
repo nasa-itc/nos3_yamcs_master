@@ -53,6 +53,7 @@
 	</properties>
 
 	<modules>
+		<module>nos3</module>
 		<module>examples</module>
 		<module>packet-viewer</module>
 		<module>simulator</module>
