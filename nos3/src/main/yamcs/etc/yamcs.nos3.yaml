@@ -26,6 +26,50 @@ services:
         warmupTime: 60
   - class: org.yamcs.plists.ParameterListService
   - class: org.yamcs.timeline.TimelineService
+  - class: org.yamcs.cfdp.CfdpService
+    name: cfdp0
+    args:
+     inactivityTimeout: 30000
+     sequenceNrLength: 4
+     maxPduSize: 484
+     incomingBucket: "receiver"
+     allowRemoteProvidedBucket: true
+     allowRemoteProvidedSubdirectory: true
+     allowDownloadOverwrites: false
+     maxExistingFileRenames: 1000
+     eofAckTimeout: 5000
+     eofAckLimit: 5
+     #Note that the simulator does not process commands faster than 1/second.
+     # Decreasign this number will make the packets queue up in the TCP queue
+     # and the CFDP sender will timeout waiting for the EOF ACK
+     sleepBetweenPdus: 1000
+     #The simulator only supports one transfer at a time
+     maxNumPendingUploads: 1
+     #How many milliseconds to keep the incoming transfer in the pending queue after completion
+     #During this time an incoming PDU with that transaction id will not be recognized as a new transaction
+     pendingAfterCompletion: 10000
+     localEntities:
+       - name: sender
+         id: 21
+         bucket: sender
+     remoteEntities:
+       - name: receiver
+         id: 24
+         bucket: receiver
+     senderFaultHandlers:
+       AckLimitReached: suspend
+     fileListingParserClassName: org.yamcs.filetransfer.CsvListingParser
+     fileListingParserArgs:
+       timestampMultiplier: 1
+  # - class: org.yamcs.tctm.cfs.CfsEventDecoder
+  #   args:
+  #     msgIds: [0x0808]
+  #     byteOrder: BIG_ENDIAN
+  #     charset: US-ASCII
+  #     appNameMax: 20
+  #     eventMsgMax: 122
+  #     streams:
+  #       - tm_realtime  
 
 dataLinks:
   - name: radio-in
@@ -64,7 +108,15 @@ dataLinks:
     port: 5111
     updateSimulationTime: true
     packetPreprocessorClassName: org.yamcs.nos3.Truth42PacketPreprocessor    
+
 mdb:
+  # - type: "sheet"
+  #   spec: "mdb/simulator-ccsds.xls"
+  #   subLoaders:
+  #     - type: "sheet"
+  #       spec: "mdb/landing.xls"
+  - type: "sheet"
+    spec: "mdb/cfdp-pdu.xls"
   - type: xtce
     args:
       file: mdb/ccsds.xtce
@@ -77,9 +129,6 @@ mdb:
   - type: xtce
     args:
       file: mdb/cmd_util.xtce
-  - type: xtce
-    args:
-      file: mdb/pdu.xtce
   - type: xtce
     args:
       file: mdb/sim_42_truth.xtce
@@ -143,6 +192,9 @@ mdb:
 #  - type: xtce
 #    args:
 #      file: mdb/cfdp.xtce
+#  - type: xtce
+#    args:
+#      file: mdb/pdu.xtce
 
 # Configuration for streams created at server startup
 streamConfig:
@@ -164,4 +216,5 @@ streamConfig:
     #  tcPatterns: ["/TO_DEBUG/CMD/.*"]
     - name: "tc_realtime"
       processor: "realtime"
+  sqlFile: "etc/extra_streams.sql"
 
