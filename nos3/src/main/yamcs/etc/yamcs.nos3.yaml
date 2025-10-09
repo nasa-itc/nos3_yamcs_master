@@ -32,6 +32,8 @@ services:
      inactivityTimeout: 30000
      sequenceNrLength: 4
      maxPduSize: 484
+     inStream: cfdp_in
+     outStream: cfdp_out
      incomingBucket: "receiver"
      allowRemoteProvidedBucket: true
      allowRemoteProvidedSubdirectory: true
