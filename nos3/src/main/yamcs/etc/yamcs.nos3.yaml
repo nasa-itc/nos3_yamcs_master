@@ -27,33 +27,27 @@ services:
   - class: org.yamcs.plists.ParameterListService
   - class: org.yamcs.timeline.TimelineService
   - class: org.yamcs.cfdp.CfdpService
-    name: cfdp0
+    name: cfdp
     args:
      inactivityTimeout: 30000
-     sequenceNrLength: 2
+     sequenceNrLength: 4
      maxPduSize: 484
      inStream: cfdp_in
      outStream: cfdp_out
-     incomingBucket: "yamcs"
-     allowRemoteProvidedBucket: true
+     incomingBucket: "ground"
+     allowRemoteProvidedBucket: false
      allowRemoteProvidedSubdirectory: true
      allowDownloadOverwrites: false
      maxExistingFileRenames: 1000
      eofAckTimeout: 5000
      eofAckLimit: 5
-     #Note that the simulator does not process commands faster than 1/second.
-     # Decreasign this number will make the packets queue up in the TCP queue
-     # and the CFDP sender will timeout waiting for the EOF ACK
      sleepBetweenPdus: 250
-     #The simulator only supports one transfer at a time
      maxNumPendingUploads: 1
-     #How many milliseconds to keep the incoming transfer in the pending queue after completion
-     #During this time an incoming PDU with that transaction id will not be recognized as a new transaction
      pendingAfterCompletion: 10000
      localEntities:
-       - name: yamcs
+       - name: ground
          id: 21
-         bucket: yamcs
+         bucket: ground
      remoteEntities:
        - name: spacecraft
          id: 24
@@ -105,13 +99,6 @@ dataLinks:
     packetPreprocessorClassName: org.yamcs.nos3.Truth42PacketPreprocessor    
 
 mdb:
-  # - type: "sheet"
-  #   spec: "mdb/simulator-ccsds.xls"
-  #   subLoaders:
-  #     - type: "sheet"
-  #       spec: "mdb/landing.xls"
-  - type: "sheet"
-    spec: "mdb/cfdp-pdu.xls"
   - type: xtce
     args:
       file: mdb/ccsds.xtce
@@ -184,12 +171,6 @@ mdb:
 #  - type: xtce
 #    args:
 #      file: mdb/syn.xtce
-#  - type: xtce
-#    args:
-#      file: mdb/cfdp_test.xtce
-#  - type: xtce
-#    args:
-#      file: mdb/cfdp.xtce
 
 # Configuration for streams created at server startup
 streamConfig:

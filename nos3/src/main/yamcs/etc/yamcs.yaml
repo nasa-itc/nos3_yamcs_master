@@ -20,7 +20,5 @@ instances:
 secretKey: changeme
 
 buckets:
-  - name: yamcs
-    path: ../../yamcs
-  - name: spacecraft
-    path: ../../spacecraft
+  - name: ground
+    path: ../../ground
