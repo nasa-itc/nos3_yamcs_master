@@ -21792,7 +21792,7 @@
             <xtce:Enumeration value="1" label="CHAN 1"/>
           </xtce:EnumerationList>
         </xtce:EnumeratedArgumentType>
-        <xtce:IntegerArgumentType name="DEST_ID_Type" characterWidth="8" initialValue="0x15000000" shortDescription="Destination ID - 4 bytes - BIG_ENDIAN">
+        <xtce:IntegerArgumentType name="DEST_ID_Type" characterWidth="8" initialValue="21" shortDescription="Destination ID - 4 bytes - BIG_ENDIAN">
           <xtce:IntegerDataEncoding sizeInBits="32" encoding="unsigned" byteOrder="leastSignificantByteFirst"/>
         </xtce:IntegerArgumentType>
         <xtce:StringArgumentType name="SRCFILENAME_Type" characterWidth="8" initialValue="/data/" shortDescription="Path/Filename to send">
