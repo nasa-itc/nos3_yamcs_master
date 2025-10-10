@@ -20,7 +20,7 @@ instances:
 secretKey: changeme
 
 buckets:
-  - name: sender
-    path: ../../sender
-  - name: receiver
-    path: ../../receiver
+  - name: yamcs
+    path: ../../yamcs
+  - name: spacecraft
+    path: ../../spacecraft

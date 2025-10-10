@@ -30,11 +30,11 @@ services:
     name: cfdp0
     args:
      inactivityTimeout: 30000
-     sequenceNrLength: 4
+     sequenceNrLength: 2
      maxPduSize: 484
      inStream: cfdp_in
      outStream: cfdp_out
-     incomingBucket: "receiver"
+     incomingBucket: "yamcs"
      allowRemoteProvidedBucket: true
      allowRemoteProvidedSubdirectory: true
      allowDownloadOverwrites: false
@@ -44,34 +44,27 @@ services:
      #Note that the simulator does not process commands faster than 1/second.
      # Decreasign this number will make the packets queue up in the TCP queue
      # and the CFDP sender will timeout waiting for the EOF ACK
-     sleepBetweenPdus: 1000
+     sleepBetweenPdus: 250
      #The simulator only supports one transfer at a time
      maxNumPendingUploads: 1
      #How many milliseconds to keep the incoming transfer in the pending queue after completion
      #During this time an incoming PDU with that transaction id will not be recognized as a new transaction
      pendingAfterCompletion: 10000
      localEntities:
-       - name: sender
+       - name: yamcs
          id: 21
-         bucket: sender
+         bucket: yamcs
      remoteEntities:
-       - name: receiver
+       - name: spacecraft
          id: 24
-         bucket: receiver
+         bucket: spacecraft
+     entityIdLength: 4
+     hasFileListingCapability: false
      senderFaultHandlers:
        AckLimitReached: suspend
      fileListingParserClassName: org.yamcs.filetransfer.CsvListingParser
      fileListingParserArgs:
        timestampMultiplier: 1
-  # - class: org.yamcs.tctm.cfs.CfsEventDecoder
-  #   args:
-  #     msgIds: [0x0808]
-  #     byteOrder: BIG_ENDIAN
-  #     charset: US-ASCII
-  #     appNameMax: 20
-  #     eventMsgMax: 122
-  #     streams:
-  #       - tm_realtime  
 
 dataLinks:
   - name: radio-in
@@ -142,6 +135,9 @@ mdb:
       file: mdb/to_debug.xtce
   - type: xtce
     args:
+      file: mdb/pdu.xtce
+  - type: xtce
+    args:
       file: ${env.COMPONENT_DIR}/arducam/gsw/arducam.xtce
   - type: xtce
     args:
@@ -194,9 +190,6 @@ mdb:
 #  - type: xtce
 #    args:
 #      file: mdb/cfdp.xtce
-#  - type: xtce
-#    args:
-#      file: mdb/pdu.xtce
 
 # Configuration for streams created at server startup
 streamConfig:
