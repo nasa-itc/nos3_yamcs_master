@@ -26,6 +26,39 @@ services:
         warmupTime: 60
   - class: org.yamcs.plists.ParameterListService
   - class: org.yamcs.timeline.TimelineService
+  - class: org.yamcs.cfdp.CfdpService
+    name: cfdp
+    args:
+     inactivityTimeout: 30000
+     sequenceNrLength: 4
+     maxPduSize: 484
+     inStream: cfdp_in
+     outStream: cfdp_out
+     incomingBucket: "ground"
+     allowRemoteProvidedBucket: false
+     allowRemoteProvidedSubdirectory: true
+     allowDownloadOverwrites: false
+     maxExistingFileRenames: 1000
+     eofAckTimeout: 5000
+     eofAckLimit: 5
+     sleepBetweenPdus: 250
+     maxNumPendingUploads: 1
+     pendingAfterCompletion: 10000
+     localEntities:
+       - name: ground
+         id: 21
+         bucket: ground
+     remoteEntities:
+       - name: spacecraft
+         id: 24
+         bucket: spacecraft
+     entityIdLength: 4
+     hasFileListingCapability: false
+     senderFaultHandlers:
+       AckLimitReached: suspend
+     fileListingParserClassName: org.yamcs.filetransfer.CsvListingParser
+     fileListingParserArgs:
+       timestampMultiplier: 1
 
 dataLinks:
   - name: radio-in
@@ -64,6 +97,7 @@ dataLinks:
     port: 5111
     updateSimulationTime: true
     packetPreprocessorClassName: org.yamcs.nos3.Truth42PacketPreprocessor    
+
 mdb:
   - type: xtce
     args:
@@ -79,9 +113,6 @@ mdb:
       file: mdb/cmd_util.xtce
   - type: xtce
     args:
-      file: mdb/pdu.xtce
-  - type: xtce
-    args:
       file: mdb/sim_42_truth.xtce
   - type: xtce
     args:
@@ -89,6 +120,9 @@ mdb:
   - type: xtce
     args:
       file: mdb/to_debug.xtce
+  - type: xtce
+    args:
+      file: mdb/pdu.xtce
   - type: xtce
     args:
       file: ${env.COMPONENT_DIR}/arducam/gsw/arducam.xtce
@@ -137,12 +171,6 @@ mdb:
 #  - type: xtce
 #    args:
 #      file: mdb/syn.xtce
-#  - type: xtce
-#    args:
-#      file: mdb/cfdp_test.xtce
-#  - type: xtce
-#    args:
-#      file: mdb/cfdp.xtce
 
 # Configuration for streams created at server startup
 streamConfig:
@@ -164,4 +192,5 @@ streamConfig:
     #  tcPatterns: ["/TO_DEBUG/CMD/.*"]
     - name: "tc_realtime"
       processor: "realtime"
+  sqlFile: "etc/extra_streams.sql"
 
