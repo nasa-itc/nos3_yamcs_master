@@ -72,7 +72,7 @@ dataLinks:
   - name: radio-out
     class: org.yamcs.tctm.UdpTcDataLink
     stream: tc_realtime
-    host: cryptolib2
+    host: cryptolib
     port: 6010
     commandPostprocessorClassName: org.yamcs.tctm.cfs.CfsCommandPostprocessor
 
@@ -193,4 +193,3 @@ streamConfig:
     - name: "tc_realtime"
       processor: "realtime"
   sqlFile: "etc/extra_streams.sql"
-
