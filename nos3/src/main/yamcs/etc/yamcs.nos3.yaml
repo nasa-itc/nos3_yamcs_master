@@ -193,4 +193,3 @@ streamConfig:
     - name: "tc_realtime"
       processor: "realtime"
   sqlFile: "etc/extra_streams.sql"
-
