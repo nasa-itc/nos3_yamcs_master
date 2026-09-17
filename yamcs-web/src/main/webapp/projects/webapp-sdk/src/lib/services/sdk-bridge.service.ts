@@ -1,7 +1,8 @@
-import { Injectable, OnDestroy, signal } from '@angular/core';
+import { OnDestroy, Service, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AppearanceService } from './appearance.service';
 import { AuthService } from './auth.service';
+import { MessageService } from './message.service';
 import { YamcsService } from './yamcs.service';
 
 const YA_ACTIVATED_ROUTE = 'YA_ACTIVATED_ROUTE';
@@ -12,7 +13,7 @@ const YA_ACTIVATED_ROUTE = 'YA_ACTIVATED_ROUTE';
  * This service is available in webcomponents, so it
  * can be safely used in shared components.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SdkBridge implements EventListenerObject, OnDestroy {
   /**
    * The main webapp router
@@ -33,6 +34,11 @@ export class SdkBridge implements EventListenerObject, OnDestroy {
    * The main webapp auth service
    */
   authService: AuthService;
+
+  /**
+   * The main webapp message service
+   */
+  messageService: MessageService;
 
   /**
    * Route data for the activated route

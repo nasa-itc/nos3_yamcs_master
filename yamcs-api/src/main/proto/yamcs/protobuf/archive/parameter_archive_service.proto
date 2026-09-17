@@ -10,11 +10,10 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 import "yamcs/api/annotations.proto";
-import "yamcs/protobuf/archive/archive.proto";
-import "yamcs/protobuf/pvalue/pvalue.proto";
 import "yamcs/protobuf/yamcs.proto";
 
 service ParameterArchiveApi {
+  option (yamcs.api.markdown) = true;
 
   // Rebuild range
   //
@@ -32,49 +31,6 @@ service ParameterArchiveApi {
       post: "/api/archive/{instance}/parameterArchive:rebuild"
       body: "*"
       offloaded: true
-    };
-  }
-
-  // Get parameter samples
-  //
-  // This divides the query interval in a number of intervals and returns aggregated
-  // statistics (max, min, avg) about each interval.
-  //
-  // This operation is useful when making high-level overviews (such as plots) of a
-  // parameter's value over large time intervals without having to retrieve each
-  // and every individual parameter value.
-  //
-  // By default this operation fetches data from the parameter archive and/or
-  // parameter cache. If these services are not configured, you can still get
-  // correct results by specifying the option ``source=replay`` as detailed below.
-  rpc GetParameterSamples(GetParameterSamplesRequest) returns (pvalue.TimeSeries) {
-    option (yamcs.api.route) = {
-      get: "/api/archive/{instance}/parameters/{name*}/samples"
-      field_mask_root: "sample"
-    };
-  }
-  
-  // Get parameter ranges
-  //
-  // A range is a tuple ``(start, stop, value, count)`` that represents the time
-  // interval for which the parameter has been steadily coming in with the same
-  // value. This request is useful for retrieving an overview for parameters that
-  // change unfrequently in a large time interval. For example an on/off status
-  // of a device, or some operational status. Two consecutive ranges containing
-  // the same value will be returned if there was a gap in the data. The gap is
-  // determined according to the parameter expiration time configured in the
-  // Mission Database.
-  rpc GetParameterRanges(GetParameterRangesRequest) returns (pvalue.Ranges) {
-    option (yamcs.api.route) = {
-      get: "/api/archive/{instance}/parameters/{name*}/ranges"
-      field_mask_root: "range"
-    };
-  }
-  
-  // List parameter history
-  rpc ListParameterHistory(ListParameterHistoryRequest) returns (ListParameterHistoryResponse) {
-    option (yamcs.api.route) = {
-      get: "/api/archive/{instance}/parameters/{name*}"
     };
   }
 
@@ -134,15 +90,19 @@ service ParameterArchiveApi {
     };
   }
 
-  // Removes all the parameter archive data and related metadata. All the filling operations are stopped before
-  // and started after the purge.
+  // Removes all the parameter archive data and related metadata. All the
+  // backfilling operations are stopped beforeh and started after the purge.
   //
-  // The rebuild operation has to be called to rebuild the past segments of the archive.
+  // The rebuild operation has to be called to rebuild the past segments of
+  // the archive.
   //
-  // Starting with Yamcs 5.9.0 the Parameter Archive is stored into a different column family ``parameter_archive``.
-  // Storing data into a separate column family gives better performance and the Parameter Archive rebuild operations
-  // are less disturbing for the other data (TM, TC, Events...). If the archive is from a previous version of Yamcs,
-  // the purge/rebuild can be used to move the parameter archive from the default column family to the separate column family.
+  // Starting with Yamcs 5.9.0 the Parameter Archive is stored into a
+  // different column family `parameter_archive`. This provides better
+  // performance and renders the Parameter Archive rebuild operations
+  // less disturbing for other data (TM, TC, Events...). If the archive
+  // dates back to a previous version of Yamcs, the purge/rebuild methods
+  // can be used to move the Parameter Archive from the default column
+  // family to the separate column family.
   rpc Purge(PurgeRequest) returns (google.protobuf.Empty) {
     option (yamcs.api.route) = {
       post: "/api/archive/{instance}/parameterArchive:purge"
@@ -151,13 +111,12 @@ service ParameterArchiveApi {
   }
   
   // Disables the automatic backfilling (rebuilding) of the parameter archive.
-  // See :manual:`services/instance/parameter-archive-service/#backfiller-options`
   // 
   // If the backfilling is already disabled, this operation has no effect.
-  // If there is a backfilling running, this call will not stop it. 
+  //
+  // If a backfilling is ongoing, this call will not stop it. 
   //
   // Manual rebuild operations are still accepted.
-  //  
   rpc DisableBackfilling(DisableBackfillingRequest) returns (google.protobuf.Empty) {
     option (yamcs.api.route) = {
       post: "/api/archive/{instance}/parameterArchive:disableBackfilling"
@@ -165,9 +124,9 @@ service ParameterArchiveApi {
     };
   }
   
-  // Enables the automatic backfilling (rebuilding) of the parameter archive. 
+  // Enables the automatic backfilling (rebuilding) of the parameter archive.
+  // 
   // If the backfilling is already enabled, this operation has no effect.
-  //  
   rpc EnableBackfilling(EnableBackfillingRequest) returns (google.protobuf.Empty) {
     option (yamcs.api.route) = {
       post: "/api/archive/{instance}/parameterArchive:enableBackfilling"
@@ -221,60 +180,8 @@ message RebuildRangeRequest {
 }
 
 message PurgeRequest {
-  // Yamcs instance name.
+  // Yamcs instance name
   optional string instance = 1;
-}
-
-message GetParameterRangesRequest {
-  // Yamcs instance name.
-  optional string instance = 1;
-
-  // Parameter name.
-  optional string name = 2;
-  
-  // Filter the lower bound of the parameter's generation time. Specify a date
-  // string in ISO 8601 format.
-  optional google.protobuf.Timestamp start = 3;
-  
-  // Filter the upper bound of the parameter's generation time. Specify a date
-  // string in ISO 8601 format.
-  optional google.protobuf.Timestamp stop = 4;
-  
-  // Time in milliseconds. Any gap (detected based on parameter expiration) smaller than
-  // this will be ignored. However if the parameter changes value, the ranges will still
-  // be split.
-  optional int64 minGap = 5;
-  
-  // Time in milliseconds. If the distance between two subsequent values of the parameter
-  // is bigger than this value (but smaller than the parameter expiration), then an
-  // artificial gap will be constructed. This also applies if there is no parameter
-  // expiration defined for the parameter.
-  optional int64 maxGap = 6;
-  
-  // Disable loading of parameters from the parameter cache. Default: ``false``.
-  optional bool norealtime = 7;
-  
-  // The name of the processor from which to use the parameter cache. Default: ``realtime``.
-  optional string processor = 8;
-
-  // Specifies how to retrieve the parameters. Either ``ParameterArchive`` or
-  // ``replay``. If ``replay`` is specified, a replay processor will be created
-  // and data will be processed with the active Mission Database. Note that this
-  // is much slower than receiving data from the ParameterArchive.
-  //
-  // Default: ``ParameterArchive``.
-  optional string source = 9;
-
-  // Time in milliseconds of the minimum range to be returned. If the data changes more often,
-  //a new range will not be created but the data will be added to the old range.
-  optional int64 minRange = 10;
-
-  // Maximum number of distinct values to be returned. The maximum number
-  // applies across all ranges and is meant to limit the amount of data that
-  // is being retrieved. The retrieved data has a count for each value as well
-  // as a total count. The difference between the total count and the sum of the
-  // individual counts can be used to compute the number of unsent values.
-  optional int32 maxValues = 11;
 }
 
 // Get information about the parameters stored in the Parameter Archive 
@@ -282,34 +189,26 @@ message GetArchivedParametersInfoRequest {
   // Yamcs instance name
   optional string instance = 1;
 
-  // Filter query. See :doc:`../filtering` for how to write a filter query.
+  // Filter query. See {doc}`../filtering` for how to write a filter query.
   //
-  // Literal text search matches against the field ``parameter``.
+  // Literal text search matches against the `parameter` field. Field
+  // comparisons can use any of the following fields:
   //
-  // Field comparisons can use any of the following fields:
+  // | Field       | Type   | Description              |
+  // | ----------- | ------ | ------------------------ |
+  // | `pid`       | number | Filter by PID            |
+  // | `parameter` | string | Filter by parameter name |
+  // | `rawType`   | enum   | Filter by raw type       |
+  // | `gid`       | number | Filter by GID            |
   //
-  // .. list-table::
-  //     :widths: 25 25 50
-  //
-  //     * - ``pid``
-  //       - number
-  //       -
-  //     * - ``parameter``
-  //       - string
-  //       -
-  //     * - ``rawType``
-  //       - enum
-  //       - One of ``float``, ``double``, ``uint32``, ``sint32``, ``binary``, ``string``,
-  //         ``timestamp``, ``uint64``, ``sint64``, ``boolean``, ``aggregate``, ``array``,
-  //         ``enumerated`` or ``none``.
-  //     * - ``gid``
-  //       - number
-  //       -
+  // Possible raw types: `aggregate`, `array`, `binary`, `boolean`, `double`,
+  // `enumerated`, `float`, `none`, `sint32`, `sint64`, `string`, `timestamp`,
+  // `uint32` or `uint64`.
   optional string filter = 4;
 
   // The maximum number of returned parameters. Choose this value too
   // high and you risk hitting the maximum response size limit enforced by the
-  // server. Default: ``100``
+  // server. Default: `100`
   optional int32 limit = 7;
 
   // Continuation token returned by a previous page response.
@@ -323,10 +222,10 @@ message GetArchivedParameterSegmentsRequest {
   // Parameter ID
   optional uint32 pid = 2;
 
-  // Include segments after ``start`` (inclusive)
+  // Include segments after `start` (inclusive)
   optional google.protobuf.Timestamp start = 3;
 
-  // Include segments before ``stop`` (exclusive)
+  // Include segments before `stop` (exclusive)
   optional google.protobuf.Timestamp stop = 4;
 }
 
@@ -362,7 +261,7 @@ message ArchivedParametersInfoResponse {
 
   // Token indicating the response is only partial. More results can then
   // be obtained by performing the same request (including all original
-  // query parameters) and setting the ``next`` parameter to this token.
+  // query parameters) and setting the `next` parameter to this token.
   optional string continuationToken = 2;
 }
 

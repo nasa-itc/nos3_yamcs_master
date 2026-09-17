@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
 import { ActivatedRoute } from '@angular/router';
@@ -11,13 +11,11 @@ import {
   utils,
 } from '@yamcs/webapp-sdk';
 import { addHours } from 'date-fns';
-import { AlarmLevelComponent } from '../../shared/alarm-level/alarm-level.component';
 import { AlarmsPageTabsComponent } from '../alarms-page-tabs/alarms-page-tabs.component';
 
 @Component({
   templateUrl: './alarm-history.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AlarmLevelComponent, AlarmsPageTabsComponent, WebappSdkModule],
+  imports: [AlarmsPageTabsComponent, WebappSdkModule],
 })
 export class AlarmHistoryComponent extends BaseComponent {
   validStart: Date | null;

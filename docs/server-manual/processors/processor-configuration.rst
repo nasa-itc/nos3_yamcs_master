@@ -71,10 +71,21 @@ subscribeContainerArchivePartitions (boolean)
 
 persistParameters (boolean)
     If set to true, save the value of the parameters when the processor is closed and restore them when a processor with the same name starts. Only the parameters with the persistence flag set will be saved. By default in XTCE all parameters are set as persistent whereas in the spreadsheet the persistance has to be enabled by specifying the "p" flag.
-    This is typically set to true for the realtime processor such that the values of the parameters are saved when Yamcs is shut down and restored when Yamcs starts up again.
-    Default: false
 
-    
+    This is typically set to true for the realtime processor such that the values of the parameters are saved when Yamcs is shut down and restored when Yamcs starts up again.
+
+    Default: ``false``
+
+overrideAlgorithmsEnabled (boolean)
+    If set to true, users with ``ChangeMissionDatabase`` system privilege can update
+    an algorithm script at runtime.
+
+    .. warning::
+        This is disabled by default to avoid the inherent risk of Remote Code Execution (RCE).
+
+    Default: ``false``
+
+
 Alarm options 
 -------------
 
@@ -113,6 +124,8 @@ expirationTolerance (double)
     The Mission Database can define an expected rate in stream for packets (containers). This signifies how often a packet is expected to be sent by the remote system. The rate in stream property will cause Yamcs to set an expiration time for the parameters extracted from that packet. The expiration of parameters is used to warn the operators that they are potentially looking at stale data in the displays.
     
     Yamcs will compute the expiration time as the rate in stream defined in the Mission Database multiplied by this configuration option. The tolerance is needed in order to avoid generating false expiration warnings.
+
+    Default: ``1.9``
 
 maxArraySize (integer)
     The maximum size of arrays extracted from TM packets. The arrays can be dynamically sized (meaning the size is given by a parameter in the packet) and this option configures the maximum size allowed. Default: ``10000``.

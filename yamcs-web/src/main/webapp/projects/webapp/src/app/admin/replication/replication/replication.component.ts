@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { Title } from '@angular/platform-browser';
@@ -10,7 +10,7 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject } from 'rxjs';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 import { ReplicationStateComponent } from '../replication-state/replication-state.component';
 import { ShowStreamsDialogComponent } from '../show-streams-dialog/show-streams-dialog.component';
@@ -18,9 +18,8 @@ import { ShowStreamsDialogComponent } from '../show-streams-dialog/show-streams-
 @Component({
   templateUrl: './replication.component.html',
   styleUrl: './replication.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    AdminPageTemplateComponent,
+    AdminPageComponent,
     AppAdminToolbar,
     ReplicationStateComponent,
     WebappSdkModule,

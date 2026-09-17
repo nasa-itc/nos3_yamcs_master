@@ -1,10 +1,5 @@
 import { CdkPortalOutlet } from '@angular/cdk/portal';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  ContentChild,
-  input,
-} from '@angular/core';
+import { Component, ContentChild, input } from '@angular/core';
 import { WebappSdkModule } from '@yamcs/webapp-sdk';
 import {
   APP_ADMIN_TOOLBAR,
@@ -15,7 +10,6 @@ import {
   selector: 'app-admin-toolbar',
   templateUrl: './admin-toolbar.component.html',
   styleUrl: './admin-toolbar.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: APP_ADMIN_TOOLBAR,
@@ -23,7 +17,7 @@ import {
     },
   ],
   host: {
-    class: 'app-instance-toolbar',
+    class: 'app-admin-toolbar',
   },
   imports: [CdkPortalOutlet, WebappSdkModule],
 })

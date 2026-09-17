@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  Inject,
-  OnInit,
-  ViewChild,
-} from '@angular/core';
+import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { UntypedFormControl, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
@@ -21,7 +15,6 @@ import { ThicknessComponent } from '../thickness/thickness.component';
 @Component({
   selector: 'app-compare-parameter-dialog',
   templateUrl: './compare-parameter-dialog.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ColorPaletteComponent, WebappSdkModule, ThicknessComponent],
 })
 export class CompareParameterDialogComponent implements OnInit {
@@ -42,7 +35,7 @@ export class CompareParameterDialogComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    const excludedParameters = this.data.exclude as Parameter[];
+    const excludedParameters = (this.data?.exclude || []) as Parameter[];
     this.filteredOptions = this.parameter.valueChanges.pipe(
       debounceTime(300),
       switchMap((val) =>

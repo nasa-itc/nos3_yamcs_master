@@ -12,6 +12,28 @@ Class Name
 :javadoc:`org.yamcs.tctm.TcpTmDataLink`
 
 
+Configuration
+-------------
+
+Data links are configured in :file:`etc/yamcs.{instance}.yaml`. Example:
+
+.. code-block:: yaml
+
+   dataLinks:
+    - name: tctm
+      class: org.yamcs.tctm.TcpTmDataLink
+      stream: tm_realtime
+      host: 127.0.0.1
+      port: 10011
+      packetInputStreamClassName: org.yamcs.tctm.CcsdsPacketInputStream
+      packetPreprocessorClassName: org.yamcs.tctm.GenericPacketPreprocessor
+      packetPreprocessorArgs:
+          timestampOffset: 2
+          seqCountOffset: 10
+          errorDetection:
+            type: "CRC-16-CCIIT"
+
+
 Configuration Options
 ---------------------
 
@@ -22,16 +44,21 @@ port (integer)
     **Required.** The TCP port to connect to
 
 stream (string)
-    **Required.** The stream where data is emitted
+    **Required.** The stream where incoming data (telemetry) is emitted
 
 packetInputStreamClassName (string)
-    Class name of a :javadoc:`~org.yamcs.tctm.PacketInputStream`. Default is :javadoc:`org.yamcs.tctm.CcsdsPacketInputStream` which reads CCSDS Packets.
+    Class name of a :doc:`packet-input-stream/index`. Default is :doc:`org.yamcs.tctm.CcsdsPacketInputStream <packet-input-stream/ccsds>` which reads CCSDS Packets.
 
 packetInputStreamArgs (map)
     Optional args of arbitrary complexity to pass to the PacketInputStream. Each PacketInputStream may support different options.
 
 packetPreprocessorClassName (string)
-    Class name of a :javadoc:`~org.yamcs.tctm.PacketPreprocessor` implementation. Default is :javadoc:`org.yamcs.tctm.IssPacketPreprocessor` which applies :abbr:`ISS (International Space Station)` conventions.
+    Class name of a :doc:`packet-preprocessor/index` implementation.
+    
+    Default is :javadoc:`org.yamcs.tctm.IssPacketPreprocessor` which applies :abbr:`ISS (International Space Station)` conventions.
+    
+    .. note::
+        Always explicitly configure this property. As of Yamcs 5.12.1, you will see deprecation warnings when not doing so. In a later version we expect to remove the legacy default behaviour.
 
 packetPreprocessorArgs (map)
-    Optional args of arbitrary complexity to pass to the PacketPreprocessor. Each PacketPreprocessor may support different options.
+    Optional args of arbitrary complexity to pass to the packet preprocessor. Each preprocessor may support different options.

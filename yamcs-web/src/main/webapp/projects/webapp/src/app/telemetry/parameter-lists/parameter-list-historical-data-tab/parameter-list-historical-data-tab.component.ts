@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
+import { Component } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTableDataSource } from '@angular/material/table';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,7 +29,6 @@ const defaultInterval = 'PT1H';
 @Component({
   templateUrl: './parameter-list-historical-data-tab.component.html',
   styleUrl: './parameter-list-historical-data-tab.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ParameterListHistoricalDataTabComponent {
@@ -50,10 +49,10 @@ export class ParameterListHistoricalDataTabComponent {
   // range is actually applied.
   appliedInterval: string;
 
-  filterForm = new UntypedFormGroup({
-    interval: new UntypedFormControl(defaultInterval),
-    customStart: new UntypedFormControl(null),
-    customStop: new UntypedFormControl(null),
+  filterForm = new FormGroup({
+    interval: new FormControl<string>(defaultInterval, { nonNullable: true }),
+    customStart: new FormControl<string | null>(null),
+    customStop: new FormControl<string | null>(null),
   });
 
   displayedColumns = ['generationTime', 'actions'];
@@ -133,7 +132,7 @@ export class ParameterListHistoricalDataTabComponent {
   }
 
   jumpToNow() {
-    const interval = this.filterForm.value['interval'];
+    const interval = this.filterForm.value.interval!;
     if (interval === 'NO_LIMIT') {
       // NO_LIMIT may include future data under erratic conditions. Reverting
       // to the default interval is more in line with the wording 'jump to now'.
@@ -146,8 +145,8 @@ export class ParameterListHistoricalDataTabComponent {
   }
 
   applyCustomDates() {
-    this.validStart = utils.toDate(this.filterForm.value['customStart']);
-    this.validStop = utils.toDate(this.filterForm.value['customStop']);
+    this.validStart = utils.toDate(this.filterForm.value.customStart);
+    this.validStop = utils.toDate(this.filterForm.value.customStop);
     this.appliedInterval = 'CUSTOM';
     this.loadData();
   }
@@ -228,11 +227,11 @@ export class ParameterListHistoricalDataTabComponent {
         interval: this.appliedInterval,
         customStart:
           this.appliedInterval === 'CUSTOM'
-            ? this.filterForm.value['customStart']
+            ? this.filterForm.value.customStart
             : null,
         customStop:
           this.appliedInterval === 'CUSTOM'
-            ? this.filterForm.value['customStop']
+            ? this.filterForm.value.customStop
             : null,
       },
       queryParamsHandling: 'merge',

@@ -114,6 +114,9 @@ allowDownloadOverwrites (boolean)
 maxExistingFileRenames (integer)
     Maximum number appended to incoming file names in case of matching names (when ``allowDownloadOverwrites`` is false). Default: ``1000``
 
+maxFileSize (integer)
+    The maximum file size in bytes accepted for incoming transfers. If the Metadata PDU declares a file size larger than this value, or if a File Data PDU is received whose end offset exceeds this value, the transfer is aborted with a ``FileSizeError`` fault. Default: ``104857600`` (100 MB).
+
 localEntities (map)
     A list of entity definitions used to give names to the local (Yamcs) entity identifiers as well as to configure which bucket is used for storing the files received for that entity. The names can be used in the API calls when initiating transfers. The list has to contain all identifiers which will be used by the remote system to send files.  If a PDU is received to an identifier not in this map, the PDU will be dropped and no transaction will be started.
 
@@ -145,13 +148,13 @@ canChangePduSize (boolean)
     Whether a ``FileTransferOption`` can be used to set a specific transfer's PDU size. Default: ``false``
 
 pduSizePredefinedValues (list)
-    List of predefined integer values for the PDU size option when ``canChangePduSize`` is ``true``, shown as a dropdown menu in the web UI.
+    List of predefined integer values for the PDU size option when ``canChangePduSize`` is ``true``, shown as a dropdown menu in the Yamcs UI.
 
 canChangePduDelay (boolean)
     Whether a ``FileTransferOption`` can be used to set a specific transfer's PDU delay (sleep between PDUs). Default: ``false``
 
 pduDelayPredefinedValues (list)
-    List of predefined integer values for the PDU delay option when ``canChangePduDelay`` is ``true``, shown as a dropdown menu in the web UI.
+    List of predefined integer values for the PDU delay option when ``canChangePduDelay`` is ``true``, shown as a dropdown menu in the Yamcs UI.
 
 inactivityTimeout (integer)
     The time in milliseconds used by both the sender and receiver to check for inactivity. The timer is active on the receiver until EOF has been received and on class 2 sender after EOF has been sent (while waiting for the Finished PDU). If the timer expires, the InactivityDetected event will be triggered and the transaction may be cancelled or suspended (depending on the configuration of the fault handler for InactivityDetected event).
@@ -229,6 +232,9 @@ fileListingServiceArgs (map)
 automaticDirectoryListingReloads (boolean)
     Whether the CFDP Service should automatically try to send a directory listing request when a client fetches a file listing. Default: ``false``
 
+directoryListingFileName (string)
+    Name of the temporary file the remote entity writes the directory listing into before downlinking it. The default ``.dirlist.notsaved`` signals a receiver not to persist it, but some receivers reject filenames that don't match their own naming convention -- override this to a name they accept. Default: ``.dirlist.notsaved``
+
 fileListingParserClassName (string)
     Class for parsing the CFDP directory listing response files. Default: ``org.yamcs.filetransfer.BasicListingParser``
 
@@ -241,3 +247,12 @@ allowConcurrentFileOverwrites (boolean)
 pendingAfterCompletion (integer)
     Number of milliseconds to keep the incoming transaction in memory after completion. During this time, the newly received EOF PDUs belonging to the transaction are still answered. All the other PDUs belonging to the transaction are ignored. Default: ``600000`` (10 minutes).
     Consequentially if a new transfer would start with the same id (for example following an on-board computer reboot), the transfer will not be recognized as new before this timer has expired.
+
+
+checksumType (string)
+    The checksum type to use for outgoing transfers. Supported values are ``NULL`` and ``MODULAR``.
+    The checksum type for incoming transfers is read from the Metadata PDU, but only these two values are supported, anything else will cause the transfer to fail with the ``UNSUPPORTED_CHECKSUM_TYPE`` condition code.
+
+    Note: ``NULL`` is a special value in YAML, so you must enclose it in quotes when using it.
+
+    Default: ``MODULAR``

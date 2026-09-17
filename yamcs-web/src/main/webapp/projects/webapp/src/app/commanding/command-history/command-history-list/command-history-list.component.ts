@@ -1,7 +1,6 @@
 import { Clipboard } from '@angular/cdk/clipboard';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   OnDestroy,
   OnInit,
@@ -41,7 +40,6 @@ const defaultInterval = 'PT1H';
 @Component({
   templateUrl: './command-history-list.component.html',
   styleUrl: './command-history-list.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AcknowledgmentIconComponent,
     CommandArgumentsComponent,
@@ -175,7 +173,7 @@ export class CommandHistoryListComponent
           const aliasColumn = {
             id: namespace,
             label: namespace,
-            alwaysVisible: true,
+            visible: this.config.showAliasColumns,
           };
           aliasColumns.push(aliasColumn);
         }

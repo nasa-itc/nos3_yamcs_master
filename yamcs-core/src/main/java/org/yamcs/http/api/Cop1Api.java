@@ -21,9 +21,10 @@ import org.yamcs.protobuf.InitializeRequest;
 import org.yamcs.protobuf.ResumeRequest;
 import org.yamcs.protobuf.SubscribeStatusRequest;
 import org.yamcs.protobuf.UpdateConfigRequest;
+import org.yamcs.security.SystemPrivilege;
 import org.yamcs.tctm.Link;
 import org.yamcs.tctm.ccsds.Cop1Monitor;
-import org.yamcs.tctm.ccsds.Cop1TcPacketHandler;
+import org.yamcs.tctm.ccsds.Cop1UplinkPacketHandler;
 
 import com.google.protobuf.Empty;
 
@@ -33,7 +34,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void initialize(Context ctx, InitializeRequest request, Observer<Empty> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
 
         if (!request.hasType()) {
             throw new BadRequestException("No initialization type specified");
@@ -76,7 +78,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void resume(Context ctx, ResumeRequest request, Observer<Empty> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
         cop1Link.resume().whenComplete((v, error) -> {
             if (error == null) {
                 observer.complete(Empty.getDefaultInstance());
@@ -88,7 +91,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void disable(Context ctx, DisableRequest request, Observer<Empty> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
         boolean bypassAll = request.hasSetBypassAll() ? request.getSetBypassAll() : true;
         cop1Link.disableCop1(bypassAll);
         observer.complete(Empty.getDefaultInstance());
@@ -96,7 +100,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void updateConfig(Context ctx, UpdateConfigRequest request, Observer<Cop1Config> observer) {
-        Cop1TcPacketHandler link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlLinks);
+        Cop1UplinkPacketHandler<?> link = verifyCop1Link(request.getInstance(), request.getLink());
         link.setConfig(request.getCop1Config()).whenComplete((v, err) -> {
             if (err == null) {
                 link.getCop1Config().whenComplete((config, err2) -> {
@@ -114,7 +119,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void getConfig(Context ctx, GetConfigRequest request, Observer<Cop1Config> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ReadLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
         CompletableFuture<Cop1Config> cf = cop1Link.getCop1Config();
         cf.whenComplete((v, error) -> {
             if (error == null) {
@@ -127,7 +133,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void getStatus(Context ctx, GetStatusRequest request, Observer<Cop1Status> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ReadLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
         CompletableFuture<Cop1Status> cf = cop1Link.getCop1Status();
         cf.whenComplete((v, error) -> {
             if (error == null) {
@@ -140,7 +147,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
     @Override
     public void subscribeStatus(Context ctx, SubscribeStatusRequest request, Observer<Cop1Status> observer) {
-        Cop1TcPacketHandler cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
+        ctx.checkSystemPrivilege(SystemPrivilege.ReadLinks);
+        Cop1UplinkPacketHandler<?> cop1Link = verifyCop1Link(request.getInstance(), request.getLink());
 
         MyCop1Monitor monitor = new MyCop1Monitor(cop1Link, observer);
         cop1Link.addMonitor(monitor);
@@ -154,7 +162,7 @@ public class Cop1Api extends AbstractCop1Api<Context> {
         });
     }
 
-    private Cop1TcPacketHandler verifyCop1Link(String instance, String linkName) {
+    private Cop1UplinkPacketHandler<?> verifyCop1Link(String instance, String linkName) {
         LinksApi.verifyLink(instance, linkName);
         YamcsServerInstance ysi = InstancesApi.verifyInstanceObj(instance);
         LinkManager lmgr = ysi.getLinkManager();
@@ -162,8 +170,8 @@ public class Cop1Api extends AbstractCop1Api<Context> {
         if (link == null) {
             throw new BadRequestException("There is no link named '" + linkName + "' in instance " + instance);
         }
-        if (link instanceof Cop1TcPacketHandler) {
-            return (Cop1TcPacketHandler) link;
+        if (link instanceof Cop1UplinkPacketHandler cop1Link) {
+            return cop1Link;
         }
         throw new BadRequestException(String.format(
                 "Link '%s' for instance '%s' does not support COP-1",
@@ -174,11 +182,11 @@ public class Cop1Api extends AbstractCop1Api<Context> {
 
         private static final Log log = new Log(MyCop1Monitor.class);
 
-        private final Cop1TcPacketHandler cop1Link;
+        private final Cop1UplinkPacketHandler<?> cop1Link;
         private Cop1Status lastStatus;
         private Observer<Cop1Status> observer;
 
-        MyCop1Monitor(Cop1TcPacketHandler cop1Link, Observer<Cop1Status> observer) {
+        MyCop1Monitor(Cop1UplinkPacketHandler<?> cop1Link, Observer<Cop1Status> observer) {
             this.cop1Link = cop1Link;
             this.observer = observer;
         }

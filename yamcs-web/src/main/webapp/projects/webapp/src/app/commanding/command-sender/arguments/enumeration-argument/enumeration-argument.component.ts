@@ -1,11 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  forwardRef,
-  Input,
-  OnDestroy,
-  OnInit,
-} from '@angular/core';
+import { Component, forwardRef, Input, OnDestroy, OnInit } from '@angular/core';
 import {
   ControlValueAccessor,
   NG_VALIDATORS,
@@ -31,7 +24,6 @@ import { SelectEnumerationDialogComponent } from '../../select-enumeration-dialo
   selector: 'app-enumeration-argument',
   templateUrl: './enumeration-argument.component.html',
   styleUrl: './enumeration-argument.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -95,6 +87,7 @@ export class EnumerationArgumentComponent
       selectOptions.push({
         id: enumValue.label,
         label: enumValue.label,
+        description: enumValue.description,
       });
     }
     this.selectOptions$.next(selectOptions);

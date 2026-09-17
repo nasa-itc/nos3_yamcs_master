@@ -4,6 +4,7 @@ import {
 } from '@angular/cdk/overlay';
 import { APP_BASE_HREF } from '@angular/common';
 import {
+  ANIMATION_MODULE_TYPE,
   EnvironmentProviders,
   inject,
   provideAppInitializer,
@@ -16,12 +17,12 @@ import {
   MAT_TOOLTIP_DEFAULT_OPTIONS,
   MatTooltipDefaultOptions,
 } from '@angular/material/tooltip';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { UtcDateAdapter } from './components/date-time-input/UtcDateAdapter';
 import { AppearanceService } from './services/appearance.service';
 import { AuthService } from './services/auth.service';
 import { ConfigService } from './services/config.service';
+import { MessageService } from './services/message.service';
 import { SdkBridge } from './services/sdk-bridge.service';
 import { YamcsService } from './services/yamcs.service';
 
@@ -60,7 +61,7 @@ export function provideYamcsMaterialConfiguration(): Provider[] {
     // The default OverlayContainer does not show overlays if
     // requestFullscreen is used.
     { provide: OverlayContainer, useClass: FullscreenOverlayContainer },
-    provideNoopAnimations(),
+    { provide: ANIMATION_MODULE_TYPE, useValue: 'NoopAnimations' },
   ];
 }
 
@@ -93,13 +94,13 @@ export function provideSdkBridge(): EnvironmentProviders[] {
       sdkBridge.appearanceService = inject(AppearanceService);
       sdkBridge.router = inject(Router);
       sdkBridge.yamcs = inject(YamcsService);
+      sdkBridge.messageService = inject(MessageService);
     }),
   ];
 }
 
 export function provideYamcsWebExtension(): (
-  | Provider
-  | EnvironmentProviders
+  Provider | EnvironmentProviders
 )[] {
   return [
     provideBaseHrefFromIndexHtml(),

@@ -1,11 +1,5 @@
 import { SelectionModel } from '@angular/cdk/collections';
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  Inject,
-  ViewChild,
-} from '@angular/core';
+import { AfterViewInit, Component, Inject, ViewChild } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
@@ -16,7 +10,6 @@ import { ArgumentType, EnumValue, WebappSdkModule } from '@yamcs/webapp-sdk';
   selector: 'app-select-enumeration-dialog',
   templateUrl: './select-enumeration-dialog.component.html',
   styleUrl: './select-enumeration-dialog.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class SelectEnumerationDialogComponent implements AfterViewInit {
@@ -28,7 +21,7 @@ export class SelectEnumerationDialogComponent implements AfterViewInit {
   dataSource = new MatTableDataSource<EnumValue>([]);
   selection = new SelectionModel<EnumValue>();
 
-  displayedColumns = ['name', 'value'];
+  displayedColumns = ['name', 'description', 'value'];
 
   constructor(
     private dialogRef: MatDialogRef<SelectEnumerationDialogComponent>,
@@ -37,11 +30,12 @@ export class SelectEnumerationDialogComponent implements AfterViewInit {
     const argumentType = data.type as ArgumentType;
     const isHex = argumentType.dataEncoding?.encoding === 'UNSIGNED';
     this.dataSource.filterPredicate = (enumValue, filter) => {
-      const { label, value } = enumValue;
+      const { label, value, description } = enumValue;
       return (
         label.toLowerCase().indexOf(filter) >= 0 ||
         String(value).indexOf(filter) >= 0 ||
-        (isHex && Number(value).toString(16).indexOf(filter) >= 0)
+        (isHex && Number(value).toString(16).indexOf(filter) >= 0) ||
+        (!!description && description.toLowerCase().indexOf(filter) >= 0)
       );
     };
 

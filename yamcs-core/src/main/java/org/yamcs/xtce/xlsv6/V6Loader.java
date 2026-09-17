@@ -155,6 +155,7 @@ public class V6Loader extends V6LoaderBase {
 
     public V6Loader(YConfiguration config) {
         this(config.getString("file"));
+        nameOverride = config.getString("name", null);
     }
 
     public V6Loader(String filename) {
@@ -264,10 +265,17 @@ public class V6Loader extends V6LoaderBase {
                     String.format("Format version (%s) not supported by loader version (%s)", version, FORMAT_VERSION));
         }
         fileFormatVersion = version;
-        if (!hasColumn(cells, 1)) {
-            throw new SpreadsheetLoadException(ctx, "No value provided for the system name");
+
+        String name;
+        if (nameOverride == null) {
+            if (!hasColumn(cells, 1)) {
+                throw new SpreadsheetLoadException(ctx, "No value provided for the system name");
+            }
+            name = cells[1].getContents();
+        } else {
+            name = nameOverride;
         }
-        String name = cells[1].getContents();
+
         rootSpaceSystem = new SpaceSystem(name);
 
         // Add a header
@@ -371,7 +379,12 @@ public class V6Loader extends V6LoaderBase {
                     if (CALIB_TYPE_ENUMERATION.equalsIgnoreCase(type)) {
                         try {
                             long raw = Integer.decode(getContent(cells, CN_CALIB_CALIB1));
-                            enumeration.add(raw, getContent(cells, CN_CALIB_CALIB2));
+                            ValueEnumeration ve = new ValueEnumeration(raw, getContent(cells, CN_CALIB_CALIB2));
+                            String description = getContent(cells, CN_CALIB_DESCRIPTION, null);
+                            if (description != null && !description.isEmpty()) {
+                                ve.setDescription(description);
+                            }
+                            enumeration.values.add(ve);
                         } catch (NumberFormatException e) {
                             throw new SpreadsheetLoadException(ctx, "Can't get integer from raw value out of '"
                                     + getContent(cells, CN_CALIB_CALIB1) + "'");
@@ -1415,7 +1428,7 @@ public class V6Loader extends V6LoaderBase {
                     }
 
                     TransmissionConstraint constraint = new TransmissionConstraint(criteria, timeout);
-                    cmd.addTransmissionConstrain(constraint);
+                    cmd.addTransmissionConstraint(constraint);
                 }
                 if (hasColumn(cells, IDX_CMDOPT_SIGNIFICANCE)) {
                     if (cmd.getDefaultSignificance() != null) {

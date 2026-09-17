@@ -52,6 +52,7 @@ import org.yamcs.protobuf.SubscribePacketsRequest;
 import org.yamcs.protobuf.TmPacketData;
 import org.yamcs.protobuf.Yamcs.NamedObjectId;
 import org.yamcs.security.ObjectPrivilegeType;
+import org.yamcs.security.SystemPrivilege;
 import org.yamcs.security.User;
 import org.yamcs.utils.TimeEncoding;
 import org.yamcs.utils.ValueUtility;
@@ -194,6 +195,8 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
                     responseb.addPackets(pdata);
                     responseb.addPacket(pdata);
                     last = pdata;
+                } else {
+                    stream.close();
                 }
             }
 
@@ -453,7 +456,16 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
         if (request.getNameCount() > 0) {
             sqlb.whereColIn("pname", nameSet);
         }
+        if (request.hasLink()) {
+            sqlb.where("link = ?", request.getLink());
+        }
         String sql = sqlb.toString();
+
+        // Parse the filter before streaming anything, so that a syntax error
+        // results in a clean error response rather than a truncated download.
+        var filter = request.hasFilter()
+                ? PacketFilterFactory.create(request.getFilter())
+                : null;
 
         HttpBody metadata = HttpBody.newBuilder()
                 .setContentType(MediaType.OCTET_STREAM.toString())
@@ -470,11 +482,18 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
                     return;
                 }
 
-                byte[] raw = (byte[]) tuple.getColumn(StandardTupleDefinitions.TM_PACKET_COLUMN);
-                HttpBody body = HttpBody.newBuilder()
-                        .setData(ByteString.copyFrom(raw))
-                        .build();
-                observer.next(body);
+                if (filter != null && !filter.matches(tuple)) {
+                    return;
+                }
+
+                String pname = tuple.getColumn(XtceTmRecorder.PNAME_COLUMN);
+                if (ctx.user.hasObjectPrivilege(ObjectPrivilegeType.ReadPacket, pname)) {
+                    byte[] raw = (byte[]) tuple.getColumn(StandardTupleDefinitions.TM_PACKET_COLUMN);
+                    HttpBody body = HttpBody.newBuilder()
+                            .setData(ByteString.copyFrom(raw))
+                            .build();
+                    observer.next(body);
+                }
             }
 
             @Override
@@ -493,24 +512,29 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
             Processor processor = ProcessingApi.verifyProcessor(instance, request.getProcessor());
             ContainerRequestManager containerRequestManager = processor.getContainerRequestManager();
             ContainerConsumer containerConsumer = (link, result) -> {
-                var tmb = TmPacketData.newBuilder()
-                        .setId(NamedObjectId.newBuilder().setName(result.getContainer().getQualifiedName()))
-                        .setPacket(ByteString.copyFrom(result.getContainerContent()))
-                        .setSize(result.getContainerContent().length)
-                        .setGenerationTime(TimeEncoding.toProtobufTimestamp(result.getGenerationTime()))
-                        .setReceptionTime(TimeEncoding.toProtobufTimestamp(result.getAcquisitionTime()))
-                        .setSequenceNumber(result.getSeqCount());
-                if (link != null) {
-                    tmb.setLink(link);
-                }
+                var packetName = result.getContainer().getQualifiedName();
+                if (ctx.user.hasObjectPrivilege(ObjectPrivilegeType.ReadPacket, packetName)) {
+                    var tmb = TmPacketData.newBuilder()
+                            .setId(NamedObjectId.newBuilder().setName(packetName))
+                            .setPacket(ByteString.copyFrom(result.getContainerContent()))
+                            .setSize(result.getContainerContent().length)
+                            .setGenerationTime(TimeEncoding.toProtobufTimestamp(result.getGenerationTime()))
+                            .setReceptionTime(TimeEncoding.toProtobufTimestamp(result.getAcquisitionTime()))
+                            .setSequenceNumber(result.getSeqCount());
+                    if (link != null) {
+                        tmb.setLink(link);
+                    }
 
-                observer.next(tmb.build());
+                    observer.next(tmb.build());
+                }
             };
             observer.setCancelHandler(
                     () -> containerRequestManager.unsubscribe(containerConsumer, mdb.getRootSequenceContainer()));
             containerRequestManager.subscribe(containerConsumer, mdb.getRootSequenceContainer());
 
         } else if (request.hasStream()) {
+            // Low-level privilege. Packet names are not known through this kind of subscription.
+            ctx.checkSystemPrivilege(SystemPrivilege.ReadTables);
             YarchDatabaseInstance ydb = YarchDatabase.getInstance(instance);
             Stream stream = TableApi.verifyStream(ctx, ydb, request.getStream());
             StreamSubscriber streamSubscriber = new StreamSubscriber() {
@@ -523,7 +547,8 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
                     int seqNumber = (Integer) tuple.getColumn(StandardTupleDefinitions.SEQNUM_COLUMN);
                     String link = tuple.getColumn(StandardTupleDefinitions.TM_LINK_COLUMN);
 
-                    var tmb = TmPacketData.newBuilder().setPacket(ByteString.copyFrom(pktData))
+                    var tmb = TmPacketData.newBuilder()
+                            .setPacket(ByteString.copyFrom(pktData))
                             .setSize(pktData.length)
                             .setGenerationTime(TimeEncoding.toProtobufTimestamp(genTime))
                             .setReceptionTime(TimeEncoding.toProtobufTimestamp(receptionTime))
@@ -551,23 +576,49 @@ public class PacketsApi extends AbstractPacketsApi<Context> {
     public void subscribeContainers(Context ctx, SubscribeContainersRequest request, Observer<ContainerData> observer) {
         String instance = InstancesApi.verifyInstance(request.getInstance());
         Mdb mdb = MdbFactory.getInstance(instance);
-        if (request.getNamesCount() == 0) {
-            throw new BadRequestException("At least one container name must be specified");
-        }
-        ctx.checkObjectPrivileges(ObjectPrivilegeType.ReadPacket, request.getNamesList());
 
-        List<SequenceContainer> containers = new ArrayList<>(request.getNamesCount());
-        for (String name : request.getNamesList()) {
-            SequenceContainer container = mdb.getSequenceContainer(name);
-            if (container == null) {
-                throw new BadRequestException("Unknown container '" + name + "'");
+        ContainerFilter filter = request.hasFilter() ? ContainerFilterFactory.create(request.getFilter()) : null;
+
+        if (request.getNamesCount() == 0 && filter == null) {
+            throw new BadRequestException("At least one container name or a filter must be specified");
+        }
+
+        List<SequenceContainer> containers;
+        if (request.getNamesCount() > 0) {
+            // Explicit names: privilege gap on any of them rejects the whole request (unchanged).
+            ctx.checkObjectPrivileges(ObjectPrivilegeType.ReadPacket, request.getNamesList());
+
+            containers = new ArrayList<>(request.getNamesCount());
+            for (String name : request.getNamesList()) {
+                SequenceContainer container = mdb.getSequenceContainer(name);
+                if (container == null) {
+                    throw new BadRequestException("Unknown container '" + name + "'");
+                }
+                containers.add(container);
             }
-            containers.add(container);
+        } else {
+            // No live message to match link/size/seqNumber against yet, so pre-narrow by name where possible;
+            // otherwise subscribe to everything and let the live filter in the callback do the work.
+            boolean requiresLiveFields = filter.isQueryField("link")
+                    || filter.isQueryField("size")
+                    || filter.isQueryField("seqNumber");
+            containers = new ArrayList<>();
+            for (SequenceContainer container : mdb.getSequenceContainers()) {
+                if (!ctx.user.hasObjectPrivilege(ObjectPrivilegeType.ReadPacket, container.getQualifiedName())) {
+                    continue;
+                }
+                if (requiresLiveFields || filter.matches(ContainerFilter.MatchTarget.forDiscovery(container))) {
+                    containers.add(container);
+                }
+            }
         }
 
         Processor processor = ProcessingApi.verifyProcessor(instance, request.getProcessor());
         ContainerRequestManager containerRequestManager = processor.getContainerRequestManager();
         ContainerConsumer containerConsumer = (link, result) -> {
+            if (filter != null && !filter.matches(ContainerFilter.MatchTarget.forDelivery(link, result))) {
+                return;
+            }
             var packetb = ContainerData.newBuilder()
                     .setName(result.getContainer().getQualifiedName())
                     .setBinary(ByteString.copyFrom(result.getContainerContent()))

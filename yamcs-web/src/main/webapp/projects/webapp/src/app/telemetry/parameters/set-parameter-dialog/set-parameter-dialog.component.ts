@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Inject } from '@angular/core';
 import {
   UntypedFormControl,
   UntypedFormGroup,
@@ -19,6 +19,7 @@ import { ParameterFormComponent } from '../parameter-form/parameter-form.compone
 @Component({
   selector: 'app-set-parameter-dialog',
   templateUrl: './set-parameter-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ParameterFormComponent, WebappSdkModule],
 })
 export class SetParameterDialogComponent {
@@ -89,9 +90,11 @@ export class SetParameterDialogComponent {
       case 'boolean':
         return { type: 'BOOLEAN', booleanValue: userValue === 'true' };
       case 'float':
-        return { type: 'FLOAT', floatValue: userValue };
-      case 'double':
-        return { type: 'DOUBLE', doubleValue: userValue };
+        if (parameter.type?.sizeInBits === 64) {
+          return { type: 'DOUBLE', doubleValue: userValue };
+        } else {
+          return { type: 'FLOAT', floatValue: userValue };
+        }
       case 'enumeration':
         return { type: 'STRING', stringValue: userValue };
       case 'integer':

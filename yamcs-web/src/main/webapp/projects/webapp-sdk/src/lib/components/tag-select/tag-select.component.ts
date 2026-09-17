@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, forwardRef } from '@angular/core';
+import { Component, forwardRef } from '@angular/core';
 import {
   ControlValueAccessor,
   NG_VALUE_ACCESSOR,
@@ -15,7 +15,6 @@ import { YaLabel } from '../label/label.component';
   selector: 'ya-tag-select',
   templateUrl: './tag-select.component.html',
   styleUrl: './tag-select.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -70,4 +69,12 @@ export class YaTagSelect implements ControlValueAccessor {
   }
 
   registerOnTouched(fn: any) {}
+
+  setDisabledState(isDisabled: boolean): void {
+    if (isDisabled) {
+      this.control.disable();
+    } else {
+      this.control.enable();
+    }
+  }
 }

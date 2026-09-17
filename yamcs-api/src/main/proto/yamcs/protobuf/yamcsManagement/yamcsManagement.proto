@@ -12,10 +12,10 @@ import "yamcs/protobuf/yamcs.proto";
 import "yamcs/protobuf/services/services.proto";
 
 message ProcessorInfo {
-  // Yamcs instance name.
+  // Yamcs instance name
   optional string instance = 1;
   
-  // Processor name.
+  // Processor name
   optional string name = 2;
   optional string type = 3;
   optional string spec = 4;
@@ -30,6 +30,9 @@ message ProcessorInfo {
   optional google.protobuf.Timestamp time = 18;
   optional bool replay = 19;
   optional bool checkCommandClearance = 20;
+
+  // Whether this processor allows users to change algorithms at runtime
+  optional bool overrideAlgorithmsEnabled = 23;
 
   // If true, this processor can not be deleted.
   optional bool protected = 21;
@@ -110,10 +113,10 @@ message ProcessorRequest {
   // Processor name
   optional string name = 3;
 
-  // Time to seek to, when ``operation`` is set to ``SEEK``
+  // Time to seek to, when `operation` is set to `SEEK`
   optional int64 seekTime = 4;
 
-  // Speec, shen ``operation`` is set to ``CHANGE_SPEED``
+  // Speec, shen `operation` is set to `CHANGE_SPEED`
   optional ReplaySpeed replaySpeed = 5;
 }
 

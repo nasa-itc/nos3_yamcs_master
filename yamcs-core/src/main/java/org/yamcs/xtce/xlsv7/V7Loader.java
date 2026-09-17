@@ -162,7 +162,7 @@ import jxl.read.biff.BiffException;
  * defines alarms or validity ranges.
  * <p>
  * The name of the duplicated types is &lt;type_name_from_DataTypes_sheet&gt;_&lt;parameter_name&gt; for parameters and
- * &lt;type_name_from_DataTypes_sheet&gt;_&lt;command_name&gt_&lt;argument_name&gt for command arguments.
+ * &lt;type_name_from_DataTypes_sheet&gt;_&lt;command_name&gt;_&lt;argument_name&gt; for command arguments.
  *
  */
 public class V7Loader extends V7LoaderBase {
@@ -201,6 +201,7 @@ public class V7Loader extends V7LoaderBase {
 
     public V7Loader(YConfiguration config) {
         this(config.getString("file"));
+        nameOverride = config.getString("name", null);
     }
 
     public V7Loader(String filename) {
@@ -325,10 +326,17 @@ public class V7Loader extends V7LoaderBase {
                     String.format("Format version (%s) not supported by loader version (%s)", version, FORMAT_VERSION));
         }
         fileFormatVersion = version;
-        if (!hasColumn(cells, 1)) {
-            throw new SpreadsheetLoadException(ctx, "No value provided for the system name");
+
+        String name;
+        if (nameOverride == null) {
+            if (!hasColumn(cells, 1)) {
+                throw new SpreadsheetLoadException(ctx, "No value provided for the system name");
+            }
+            name = cells[1].getContents();
+        } else {
+            name = nameOverride;
         }
-        String name = cells[1].getContents();
+
         rootSpaceSystem = new SpaceSystem(name);
 
         // Add a header
@@ -858,8 +866,17 @@ public class V7Loader extends V7LoaderBase {
                 ptype.setReferenceTime(rt);
             } catch (IllegalArgumentException e) {
                 throw new SpreadsheetLoadException(ctx1,
-                        "Invalid epoch '" + epochs + "'for time calibration. Known epochs are "
+                        "Invalid epoch '" + epochs + "' for time calibration. Known epochs are "
                                 + Arrays.toString(TimeEpoch.CommonEpochs.values()));
+            }
+        } else if (ref.toLowerCase().startsWith("utc:")) {
+            String isostring = ref.substring(4);
+            try {
+                ReferenceTime rt = new ReferenceTime(new TimeEpoch(isostring));
+                ptype.setReferenceTime(rt);
+            } catch (IllegalArgumentException e) {
+                throw new SpreadsheetLoadException(ctx1,
+                        "Invalid UTC epoch '" + isostring + "' for time calibration.");
             }
         } else if (ref.toLowerCase().startsWith("parameter:")) {
             String paraRefName = ref.substring(10);
@@ -1782,7 +1799,7 @@ public class V7Loader extends V7LoaderBase {
                     }
 
                     TransmissionConstraint constraint = new TransmissionConstraint(criteria, timeout);
-                    cmd.addTransmissionConstrain(constraint);
+                    cmd.addTransmissionConstraint(constraint);
                 }
                 if (hasColumn(cells, IDX_CMDOPT_SIGNIFICANCE)) {
                     if (cmd.getDefaultSignificance() != null) {

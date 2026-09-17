@@ -1,6 +1,5 @@
 import { SelectionModel } from '@angular/cdk/collections';
 import {
-  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   EventEmitter,
@@ -18,7 +17,6 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { Subscription } from 'rxjs';
-import { AlarmLevelComponent } from '../../../../../shared/alarm-level/alarm-level.component';
 import { ParameterTableBuffer } from '../ParameterTableBuffer';
 import { ParameterTable } from '../ParameterTableModel';
 
@@ -26,8 +24,7 @@ import { ParameterTable } from '../ParameterTableModel';
   selector: 'app-multiple-parameter-table',
   templateUrl: './multiple-parameter-table.component.html',
   styleUrl: './multiple-parameter-table.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AlarmLevelComponent, WebappSdkModule],
+  imports: [WebappSdkModule],
 })
 export class MultipleParameterTableComponent
   implements OnInit, OnChanges, OnDestroy

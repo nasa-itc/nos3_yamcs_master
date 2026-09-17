@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLException;
 
 import org.yamcs.api.MethodHandler;
+import org.yamcs.client.activity.ActivityClient;
 import org.yamcs.client.archive.ArchiveClient;
 import org.yamcs.client.base.HttpMethodHandler;
 import org.yamcs.client.base.ResponseObserver;
@@ -195,9 +196,12 @@ public class YamcsClient {
 
     /**
      * Polls the server, to see if it is ready.
+     * <p>
+     * A negative {@code connectionAttempts} means retry indefinitely.
      */
     public void pollServer() throws ClientException {
-        for (int i = 0; i < connectionAttempts; i++) {
+        boolean unlimited = connectionAttempts < 0;
+        for (int i = 0; unlimited || i < connectionAttempts; i++) {
             synchronized (this) {
                 try {
                     // Use an endpoint that does not require auth
@@ -227,14 +231,16 @@ public class YamcsClient {
                     for (ConnectionListener cl : connectionListeners) {
                         cl.connectionFailed(new ClientException("Thread interrupted", e));
                     }
+                    throw new ClientException("Thread interrupted while polling server", e);
                 }
             }
 
-            if (i + 1 < connectionAttempts) {
+            if (unlimited || i + 1 < connectionAttempts) {
                 try {
                     Thread.sleep(retryDelay);
                 } catch (InterruptedException e1) {
                     Thread.currentThread().interrupt();
+                    throw new ClientException("Thread interrupted while polling server", e1);
                 }
             }
         }
@@ -259,8 +265,9 @@ public class YamcsClient {
         Credentials creds = baseClient.getCredentials();
         if (creds == null) {
             connect(null, false);
-        } else if (creds instanceof OAuth2Credentials) {
-            String accessToken = ((OAuth2Credentials) creds).getAccessToken();
+        } else if (creds instanceof OAuth2Credentials oauth2) {
+            baseClient.refreshIfNeeded(oauth2); // Avoid handing the server an already-stale token
+            String accessToken = ((OAuth2Credentials) baseClient.getCredentials()).getAccessToken();
             String authorization = "Bearer " + accessToken;
             connect(authorization, true);
         } else if (creds instanceof BasicAuthCredentials) {
@@ -525,9 +532,14 @@ public class YamcsClient {
         return new ProcessorClient(methodHandler, instance, processor);
     }
 
-    public TimelineClient createTimelineClient(String instance, String processor) {
+    public TimelineClient createTimelineClient(String instance) {
         instance = Objects.requireNonNull(instance);
         return new TimelineClient(methodHandler, instance);
+    }
+
+    public ActivityClient createActivityClient(String instance) {
+        instance = Objects.requireNonNull(instance);
+        return new ActivityClient(methodHandler, instance);
     }
 
     public String getHost() {
@@ -684,6 +696,10 @@ public class YamcsClient {
             return this;
         }
 
+        /**
+         * @param connectionAttempts how many times {@link YamcsClient#pollServer()} should retry before giving up. A
+         *                           negative value means retry indefinitely.
+         */
         public Builder withConnectionAttempts(int connectionAttempts) {
             this.connectionAttempts = connectionAttempts;
             return this;

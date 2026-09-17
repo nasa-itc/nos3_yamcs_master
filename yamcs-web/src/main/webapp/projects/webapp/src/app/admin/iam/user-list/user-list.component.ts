@@ -1,8 +1,4 @@
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-} from '@angular/core';
+import { AfterViewInit, Component } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -14,15 +10,14 @@ import {
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 import { UsersTableComponent } from '../users-table/users-table.component';
 
 @Component({
   templateUrl: './user-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    AdminPageTemplateComponent,
+    AdminPageComponent,
     AppAdminToolbar,
     WebappSdkModule,
     UsersTableComponent,

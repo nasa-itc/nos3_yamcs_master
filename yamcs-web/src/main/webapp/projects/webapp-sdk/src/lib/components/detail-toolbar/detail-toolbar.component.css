@@ -1,8 +1,16 @@
-mat-toolbar {
-  background-color: #fcfcfc;
+:host {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  box-sizing: content-box;
+  height: 36px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--y-border-color);
+  background-color: var(--y-detail-pane-background-color);
+  color: var(--y-detail-pane-foreground-color);
   font-style: normal;
   font-weight: normal;
-  align-items: center;
+  font-size: 14px;
 }
 
 .icon-action {

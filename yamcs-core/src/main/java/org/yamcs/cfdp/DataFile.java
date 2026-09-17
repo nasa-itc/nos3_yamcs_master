@@ -179,6 +179,10 @@ public class DataFile {
         if (size < 0) {
             return false;
         }
+        if (dataFileSegments.isEmpty()) {
+            // a 0 byte file is complete even though no data segment has ever been received
+            return size == 0;
+        }
         if (dataFileSegments.size() != 1) {
             return false;
         }
@@ -186,10 +190,11 @@ public class DataFile {
         return seg0.start == 0 && seg0.end == size;
     }
 
-    public synchronized long getChecksum() {
+
+    public synchronized long getModularChecksum() {
         long checksum = 0;
         for (Segment segment : this.dataFileSegments) {
-            checksum += ChecksumCalculator.calculateChecksum(data, segment.start, segment.length());
+            checksum += ModularChecksumCalculator.calculateChecksum(data, segment.start, segment.length());
         }
         return checksum & 0xFFFFFFFFl;
     }

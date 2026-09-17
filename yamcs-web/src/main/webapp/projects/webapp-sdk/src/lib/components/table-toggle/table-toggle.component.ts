@@ -1,20 +1,12 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  Input,
-  OnInit,
-  inject,
-} from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
-import { PreferenceStore } from '../../services/preference-store.service';
+import { Preferences } from '../../services/preferences.service';
+import { YaSlideToggle } from '../slide-toggle/slide-toggle.component';
 
 @Component({
   selector: 'ya-table-toggle',
   templateUrl: './table-toggle.component.html',
-  styleUrl: './table-toggle.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatSlideToggle, ReactiveFormsModule],
+  imports: [ReactiveFormsModule, YaSlideToggle],
 })
 export class YaTableToggle implements OnInit {
   @Input()
@@ -22,15 +14,14 @@ export class YaTableToggle implements OnInit {
 
   formControl = new FormControl<boolean>(false);
 
-  private preferenceStore = inject(PreferenceStore);
+  private prefs = inject(Preferences);
 
   ngOnInit() {
     if (this.preferenceKey) {
-      this.preferenceStore.addPreference$(this.preferenceKey, false);
-      const checked = this.preferenceStore.getValue(this.preferenceKey);
+      const checked = this.prefs.getBoolean(this.preferenceKey, false);
       this.formControl.setValue(checked);
       this.formControl.valueChanges.subscribe((checked) => {
-        this.preferenceStore.setValue(this.preferenceKey, checked);
+        this.prefs.setBoolean(this.preferenceKey, checked);
       });
     }
   }

@@ -1,15 +1,17 @@
 import {
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
   ViewChild,
+  inject,
   input,
 } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import {
   Activity,
   ActivityLog,
   ActivityLogSubscription,
+  AuthService,
   MessageService,
   Synchronizer,
   WebappSdkModule,
@@ -17,14 +19,17 @@ import {
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { ActivityService } from '../shared/activity.service';
+import { AddMessageDialogComponent } from './add-message-dialog.component';
 
 @Component({
   templateUrl: './activity-log-tab.component.html',
   styleUrl: './activity-log-tab.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ActivityLogTabComponent implements OnDestroy {
+  private authService = inject(AuthService);
+  private dialog = inject(MatDialog);
+
   activityId = input.required<string>();
   activity$: Observable<Activity | null>;
 
@@ -130,6 +135,29 @@ export class ActivityLogTabComponent implements OnDestroy {
         });
       }
     }
+  }
+
+  openAddMessageDialog() {
+    this.dialog
+      .open(AddMessageDialogComponent, {
+        width: '500px',
+      })
+      .afterClosed()
+      .subscribe((message) => {
+        if (message) {
+          this.yamcs.yamcsClient
+            .addActivityLogMessage(
+              this.yamcs.instance!,
+              this.activityId(),
+              message,
+            )
+            .catch((err) => this.messageService.showError(err));
+        }
+      });
+  }
+
+  mayControlActivities() {
+    return this.authService.getUser()!.hasSystemPrivilege('ControlActivities');
   }
 
   ngOnDestroy() {

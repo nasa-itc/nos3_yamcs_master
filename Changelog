@@ -1,3 +1,102 @@
+Version 5.13.5 released 31-Aug-2026
+- Move stacks/scripts to top level of navigation
+- Fix cascading link not reconnecting after long upstream downtime
+- Fix misc issues around stack activities
+- Minor tweaks and fixes
+
+Version 5.13.4 released 7-Aug-2026
+- Fix OPI sizing issues on Firefox
+
+Version 5.13.3 released 5-Aug-2026
+- Fix token refresh issue in case of cascaded commanding #1139
+- UI: Allow sublink nesting of arbitrary depth (previously only two levels)
+- Add filter option to subscribe-containers call
+- Added support for previously unimplemented OPI widgets
+- Excel: Allow specifying a custom epoch for an Absolute Time parameter (was already possible with XTCE)
+- CFDP: fix for zero size file transfers
+
+Version 5.13.2 released 14-Jul-2026
+- Improved privilege checks (CVE-2026-55521, CVE-2026-55547, CVE-2026-55548 and CVE-2026-55545)
+- Fix XSS in extension route (CVE-2026-55566)
+- Sanitize YAML for templated instances (CVE-2026-55559)
+- Avoid RCE through double-quoted identifiers (CVE-2026-55511)
+- Escape LIKE pattern before embedding in generated StreamSQL Java (CVE-2026-55565)
+- Other minor tweaks and fixes.
+
+
+Version 5.13.1 released 9-Jul-2026
+- Change in the CCSDS sequence count handling for outgoing commands: in the previous version there was one per-APID counter for the entire Yamcs server. Starting with this version, by default every link mantains its own independent counter. The newly added property seqCounterName allows two or more links to share the same counter.
+- Fixed a bug in the TM secondary header length decoding where the version number bits could corrupt the decoded length.
+- CFDP: fixed the upload when PUS was used (the CRC should not depend on the presence of the PUS header).
+- CFDP: added the directoryListingFileName option, to allow overriding the temporary filename used for directory listing requests, for receivers that reject the default name.
+- Fixed the propagation of the noreplay/noparchive/norealtime parameter retrieval options to sub-retrievals.
+- UI: Rename "Procedures" section to "Automation"
+- OPI: Fix x-axis glitch on XY Graph widgets
+- moved ccsds-index requests off-netty thread to avoid blocking other requests in case the retrieval takes a long time (which offten happens when the CCSDS packets sequence count and timestamps contradict eachother)
+
+Version 5.13.0 released 21-May-2026
+- API: Allow chaining timeline activities together (for example, "B starts after successful A", or "C starts when event X starts"). Note you can only express this via the Python API client >=2.0.0 (not the UI).
+- UI: Timeline: Show relations between items/activities.
+- UI: Timeline: Add bottom detail bar for managing activity execution.
+- UI: Fix command form issue when using nested aggregates inside arrays.
+- Security updates
+- PUS post-processor: added a link action to set the CCSDS sequence count for outgoing commands.
+
+
+
+Version 5.12.6 released 1-Apr-2026
+- UI: Full reimplementation of chart tab. Added features:
+  - Customize Y-axis zoom range
+  - Allow rendering the raw values of a parameter
+  - Remember chart configuration on browser refresh
+  - New functions: fill plot, step-connect points, zero-centering
+- UI: Left sidebar was restyled a bit, and can now be collapsed to icon-only mode
+- UI: Top-right navigation options take much less space
+- UI: Added a user preference to display in UTC or local (defaulting to the server-configured preference).
+- UI: Fixes issues with the progress bar length #1075
+- Allow CSV exports to make use of Parameter Archive instead of only packet replay
+- Fix precision issue with setting local double parameter #1081
+- Change default backfill policies. When using the backfiller, the previous default was introducing too much delay for dump imports.
+- Add optional granular permission management for objects in buckets
+- Allow SDLS for non UDP links
+
+
+Version 5.12.5 released 9-Feb-2025
+- Parameter subscription: Handle forbidden parameters the same way as unknown parameters
+- Fix mirror issues with event alarms
+- Fix ascending order issue when querying for past alarms
+- CDDP: added support for the NULL checksum
+
+Version 5.12.4 released 26-Jan-2025
+- Improve display of invalid status of parameter values
+- Add toggle to disable constraint checking (requires elevated privileges)
+- Allow to change the system name of an XLS through YAML configuration
+- Reduces requests when an OPI loads the same external script multiple times
+- Allow alternative SDLS implementations to override the default Yamcs implementation
+- Add SDLS status and configuration to yamcs-web
+
+
+Version 5.12.3 released 14-Nov-2025
+- SDLS bug fixes and improvements
+
+Version 5.12.2 released 29-Oct-2025
+- Added support for SDLS (Space Data Link Security). Authenticated encryption using AES-256-GCM is now supported.
+- Fixed inheritance of constraints and verifiers:
+  - Constraints from base commands were not considered
+  - Verifiers from base commands were considered, but parameters from base commands were not being subscribed to.
+- Replication server: fixed a potential stack overflow issue.
+- Other minor tweaks and fixes.
+
+The SDLS implementation has been sponsored by the CISPA Helmholtz Center for Information Security (https://cispa.de/) and the RACCOON project (https://www.tu.berlin/en/raumfahrttechnik/research/current-projects/raccoon)
+
+
+Version 5.12.1 released 03-Sep-2025
+- Improve response time of list-packets/list-events/list-alarms when pagination is used
+- Add 1m loadavg system parameter
+- Fixed some sql queries involving High resolution timestamps and the BETWEEN clause
+- Prior to this release, some data links were defaulting to `packetPreprocessorClassName: org.yamcs.tctm.IssPacketPreprocessor`. As of this release this will generate a warning, and this default will be removed in a future release. `IssPacketPreprocessor` is a legacy preprocessor that originated from the ISS Columbus module. To avoid the deprecation warnings: always be explicit about the preprocessor.
+
+
 Version 5.12.0 released 16-Jul-2025
 - Rework calibrators to allow calibrating from any raw value type to any engineering value type. XTCE only allows calibrating numerical values (using polynomials or math expressions), so the new calibrators can only be used from the custom MDB loaders for the moment.
 - Fixes a directory traversal security vulnerability.

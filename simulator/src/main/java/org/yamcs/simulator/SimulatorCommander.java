@@ -8,9 +8,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.IntSupplier;
 import java.util.logging.LogManager;
+import java.util.stream.Collectors;
 
 import org.yamcs.ConfigurationException;
 import org.yamcs.InitException;
@@ -19,8 +23,11 @@ import org.yamcs.Spec;
 import org.yamcs.Spec.OptionType;
 import org.yamcs.ValidationException;
 import org.yamcs.YConfiguration;
+import org.yamcs.security.sdls.SdlsSecurityAssociation;
+import org.yamcs.security.sdls.SdlsSecurityAssociationFactory;
 import org.yamcs.simulator.pus.PusSimulator;
 import org.yamcs.utils.TimeEncoding;
+import org.yaml.snakeyaml.Yaml;
 
 import com.beust.jcommander.JCommander;
 import com.google.common.util.concurrent.MoreExecutors;
@@ -48,13 +55,21 @@ public class SimulatorCommander extends ProcessRunner {
         tmtcSpec.addOption("losPort", OptionType.INTEGER);
         tmtcSpec.addOption("tm2Port", OptionType.INTEGER);
 
+        Spec frameEncryptionSpec = new Spec();
+        frameEncryptionSpec.addOption("class", OptionType.STRING).withRequired(true);
+        frameEncryptionSpec.addOption("args", OptionType.ANY);
+        frameEncryptionSpec.addOption("spi", OptionType.INTEGER).withRequired(true);
+
         Spec frameSpec = new Spec();
+        frameSpec.addOption("scid", OptionType.INTEGER);
         frameSpec.addOption("type", OptionType.STRING);
         frameSpec.addOption("tmPort", OptionType.INTEGER);
         frameSpec.addOption("tmHost", OptionType.STRING);
         frameSpec.addOption("tmFrameLength", OptionType.INTEGER);
         frameSpec.addOption("tmFrameFreq", OptionType.FLOAT);
         frameSpec.addOption("tcPort", OptionType.INTEGER);
+        frameSpec.addOption("uslpTcPort", OptionType.INTEGER);
+        frameSpec.addOption("encryption", OptionType.MAP).withSpec(frameEncryptionSpec);
 
         Spec perfTestSpec = new Spec();
         perfTestSpec.addOption("numPackets", OptionType.INTEGER);
@@ -79,12 +94,19 @@ public class SimulatorCommander extends ProcessRunner {
         List<String> cmdl = new ArrayList<>();
 
         cmdl.add(new File(System.getProperty("java.home"), "bin/java").toString());
+        // Debugging:
+        // cmdl.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8989");
         cmdl.add(SimulatorCommander.class.getName());
         if (config.containsKey("telnet")) {
             YConfiguration telnetArgs = config.getConfig("telnet");
             int telnetPort = telnetArgs.getInt("port", defaultOptions.telnetPort);
             cmdl.add("--telnet-port");
             cmdl.add(Integer.toString(telnetPort));
+        }
+
+        if (config.containsKey("scid")) {
+            cmdl.add("--scid");
+            cmdl.add(Integer.toString(config.getInt("scid")));
         }
 
         if (config.containsKey("type")) {
@@ -113,10 +135,30 @@ public class SimulatorCommander extends ProcessRunner {
             double tmFrameFreq = frameArgs.getDouble("tmFrameFreq", defaultOptions.tmFrameFreq);
             int tcFramePort = frameArgs.getInt("tcFramePort", defaultOptions.tcFramePort);
 
+            if (frameArgs.containsKey("encryption")) {
+                YConfiguration frameEncryption = frameArgs.getConfig("encryption");
+                short encryptionSpi = (short) frameEncryption.getInt("spi", defaultOptions.encryptionSpi);
+
+                String encryptionClass = frameEncryption.getString("class", defaultOptions.encryptionClass);
+                Map<String, String> encryptionArgs = frameEncryption.getMap("args");
+
+                cmdl.addAll(Arrays.asList(
+                        "--encryption-class", encryptionClass,
+                        "--encryption-spi", "" + encryptionSpi));
+                // Pass all custom encryption arguments in the format:
+                // --encryption-args arg1=val1:arg2=val2
+                List<String> sArgs = encryptionArgs.entrySet().stream()
+                        .map(e -> e.getKey() + "=" + e.getValue())
+                        .toList();
+                cmdl.addAll(Arrays.asList("--encryption-args", String.join(":", sArgs)));
+            }
+
+            int uslpTcFramePort = frameArgs.getInt("uslpTcPort", defaultOptions.uslpTcFramePort);
             cmdl.addAll(Arrays.asList("--tm-frame-type", "" + tmFrameType,
                     "--tm-frame-host", "" + tmFrameHost,
                     "--tm-frame-port", "" + tmFramePort,
                     "--tc-frame-port", "" + tcFramePort,
+                    "--uslp-tc-frame-port", "" + uslpTcFramePort,
                     "--tm-frame-length", "" + tmFrameSize,
                     "--tm-frame-freq", "" + tmFrameFreq));
         }
@@ -193,65 +235,120 @@ public class SimulatorCommander extends ProcessRunner {
         }
     }
 
-    private static List<Service> createServices(SimulatorArgs runtimeOptions) {
+    public static List<Service> createServices(SimulatorArgs runtimeOptions) {
         TcPacketFactory pktFactory;
         AbstractSimulator simulator;
-        File losDir = new File("losData");
+        File losDir = runtimeOptions.losDir.toFile();
         losDir.mkdirs();
-        File dataDir = new File("data");
+        File dataDir = runtimeOptions.dataDir.toFile();
         dataDir.mkdirs();
 
-        if (runtimeOptions.type == null || runtimeOptions.type.equalsIgnoreCase("col")) {
+        if (runtimeOptions.type.equalsIgnoreCase("col")) {
             pktFactory = TcPacketFactory.COL_PACKET_FACTORY;
-
             simulator = new ColSimulator(losDir, dataDir);
         } else if (runtimeOptions.type.equalsIgnoreCase("pus")) {
             pktFactory = TcPacketFactory.PUS_PACKET_FACTORY;
             simulator = new PusSimulator(dataDir);
         } else {
-            throw new ConfigurationException("Unknonw simulatior type '" + runtimeOptions.type + "'. Use COL or PUS");
+            throw new ConfigurationException("Unknown simulator type '" + runtimeOptions.type + "'. Use COL or PUS");
         }
 
         List<Service> services = new ArrayList<>();
         services.add(simulator);
-        TcpTmTcLink tmLink = new TcpTmTcLink("TM", simulator, runtimeOptions.tmPort, pktFactory);
-        services.add(tmLink);
-        simulator.setTmLink(tmLink);
-
-        TcpTmTcLink tm2Link = new TcpTmTcLink("TM2", simulator, runtimeOptions.tm2Port, pktFactory);
-        services.add(tm2Link);
-        simulator.setTm2Link(tm2Link);
-
-        TcpTmTcLink losLink = new TcpTmTcLink("LOS", simulator, runtimeOptions.losPort, pktFactory);
-        services.add(losLink);
-        simulator.setLosLink(losLink);
-
-        services.add(new TcpTmTcLink("TC", simulator, runtimeOptions.tcPort, pktFactory));
-
-        if (simulator instanceof ColSimulator) {
-            TelnetServer telnetServer = new TelnetServer((ColSimulator) simulator);
-            telnetServer.setPort(runtimeOptions.telnetPort);
-            services.add(telnetServer);
+        if (runtimeOptions.tmPort != null) {
+            TcpTmTcLink tmLink = new TcpTmTcLink("TM", simulator, runtimeOptions.tmPort, pktFactory);
+            services.add(tmLink);
+            simulator.setTmLink(tmLink);
         }
 
-        if (simulator instanceof ColSimulator) {
-            ColSimulator sim = (ColSimulator) simulator;
+        if (runtimeOptions.tm2Port != null) {
+            TcpTmTcLink tm2Link = new TcpTmTcLink("TM2", simulator, runtimeOptions.tm2Port, pktFactory);
+            services.add(tm2Link);
+            simulator.setTm2Link(tm2Link);
+        }
+
+        if (runtimeOptions.losPort != null) {
+            TcpTmTcLink losLink = new TcpTmTcLink("LOS", simulator, runtimeOptions.losPort, pktFactory);
+            services.add(losLink);
+            simulator.setLosLink(losLink);
+        }
+
+        if (runtimeOptions.tcPort != null) {
+            services.add(new TcpTmTcLink("TC", simulator, runtimeOptions.tcPort, pktFactory));
+        }
+
+        if (simulator instanceof ColSimulator colSimulator) {
+            if (runtimeOptions.telnetPort != null) {
+                TelnetServer telnetServer = new TelnetServer(colSimulator);
+                telnetServer.setPort(runtimeOptions.telnetPort);
+                services.add(telnetServer);
+            }
+        }
+
+        if (simulator instanceof ColSimulator colSimulator) {
             if (runtimeOptions.tmFrameLength > 0) {
-                UdpTcFrameLink tcFrameLink = new UdpTcFrameLink(sim, runtimeOptions.tcFramePort);
-                UdpTmFrameLink frameLink = new UdpTmFrameLink(runtimeOptions.tmFrameType, runtimeOptions.tmFrameHost,
-                        runtimeOptions.tmFramePort,
-                        runtimeOptions.tmFrameLength, runtimeOptions.tmFrameFreq, () -> {
-                            return tcFrameLink.getClcw();
-                        });
+                // Load a key for encryption/decryption if one was provided
+                final SdlsSecurityAssociation maybeSdlsTm, maybeSdlsTc;
+
+                short spi = (short) runtimeOptions.encryptionSpi;
+                String encryptionClass = runtimeOptions.encryptionClass;
+                if (encryptionClass != null) {
+                    String argStr = runtimeOptions.encryptionArgs;
+                    Yaml yaml = new Yaml();
+                    Map<String, Object> args = Arrays.stream(argStr.split(":"))
+                            .map(s -> s.split("="))
+                            .collect(Collectors.toMap(a -> a[0], a -> yaml.load(a[1])));
+                    YConfiguration argsConfig = new YConfiguration(null, null, args);
+
+                    ServiceLoader<SdlsSecurityAssociationFactory> loader = ServiceLoader
+                            .load(SdlsSecurityAssociationFactory.class);
+                    Optional<ServiceLoader.Provider<SdlsSecurityAssociationFactory>> maybeSaImpl = loader.stream()
+                            .filter(l -> l.get().getClass().getName().equals(encryptionClass))
+                            .findFirst();
+                    if (maybeSaImpl.isEmpty()) {
+                        throw new ConfigurationException("No implementation of SdlsSecurityAssociationFactory found " +
+                                "for " + encryptionClass);
+                    }
+                    SdlsSecurityAssociationFactory saImpl = maybeSaImpl.get().get();
+
+                    maybeSdlsTc = saImpl.create(null, "TC", spi, argsConfig);
+                    maybeSdlsTm = saImpl.create(null, "TM", spi, argsConfig);
+
+                } else {
+                    maybeSdlsTm = null;
+                    maybeSdlsTc = null;
+                }
+
+                UdpTcFrameLink tcFrameLink = new UdpTcFrameLink(colSimulator, runtimeOptions.tcFramePort, maybeSdlsTc);
+
+                UdpUslpFrameLink uslpFrameLink = null;
+                if (runtimeOptions.uslpTcFramePort > 0) {
+                    uslpFrameLink = new UdpUslpFrameLink(colSimulator, runtimeOptions.uslpTcFramePort);
+                    services.add(uslpFrameLink);
+                }
+
+                final UdpUslpFrameLink finalUslpFrameLink = uslpFrameLink;
+                IntSupplier clcwSupplier = finalUslpFrameLink != null
+                        ? finalUslpFrameLink::getClcw
+                        : tcFrameLink::getClcw;
+                UdpTmFrameLink frameLink = new UdpTmFrameLink(runtimeOptions.scid, runtimeOptions.tmFrameType,
+                        runtimeOptions.tmFrameHost, runtimeOptions.tmFramePort, runtimeOptions.tmFrameLength,
+                        runtimeOptions.tmFrameFreq,
+                        clcwSupplier, maybeSdlsTm);
+
                 services.add(tcFrameLink);
                 services.add(frameLink);
-                sim.setTmFrameLink(frameLink);
+                colSimulator.setTmFrameLink(frameLink);
             }
 
             if (runtimeOptions.perfNp > 0) {
-                PerfPacketGenerator ppg = new PerfPacketGenerator(sim, runtimeOptions.perfNp, runtimeOptions.perfPs,
-                        runtimeOptions.perfMs, runtimeOptions.perfChangePercent);
-                sim.setPerfPacketGenerator(ppg);
+                PerfPacketGenerator ppg = new PerfPacketGenerator(
+                        colSimulator,
+                        runtimeOptions.perfNp,
+                        runtimeOptions.perfPs,
+                        runtimeOptions.perfMs,
+                        runtimeOptions.perfChangePercent);
+                colSimulator.setPerfPacketGenerator(ppg);
                 services.add(ppg);
             }
         }

@@ -1,28 +1,33 @@
-import { Component, Inject } from '@angular/core';
-import {
-  UntypedFormBuilder,
-  UntypedFormGroup,
-  Validators,
-} from '@angular/forms';
+import { ChangeDetectionStrategy, Component, Inject } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   EditReplayProcessorRequest,
   WebappSdkModule,
   YamcsService,
   utils,
+  validators,
 } from '@yamcs/webapp-sdk';
 
 @Component({
   selector: 'app-modify-replay-dialog',
   templateUrl: './modify-replay-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [WebappSdkModule],
 })
 export class ModifyReplayDialogComponent {
-  form: UntypedFormGroup;
+  form = new FormGroup(
+    {
+      start: new FormControl<string | null>(null, Validators.required),
+      stop: new FormControl<string | null>(null),
+    },
+    {
+      validators: [validators.dateRangeValidator('start', 'stop')],
+    },
+  );
 
   constructor(
     private dialogRef: MatDialogRef<ModifyReplayDialogComponent>,
-    formBuilder: UntypedFormBuilder,
     private yamcs: YamcsService,
     @Inject(MAT_DIALOG_DATA) readonly data: any,
   ) {
@@ -38,15 +43,15 @@ export class ModifyReplayDialogComponent {
       }
     }
 
-    this.form = formBuilder.group({
-      start: [utils.toISOString(initialStart), [Validators.required]],
-      stop: [initialStop ? utils.toISOString(initialStop) : ''],
+    this.form.setValue({
+      start: utils.toISOString(initialStart),
+      stop: initialStop ? utils.toISOString(initialStop) : null,
     });
   }
 
   submit() {
     const replayConfig: EditReplayProcessorRequest = {
-      start: utils.toISOString(this.form.value.start),
+      start: utils.toISOString(this.form.value.start!),
     };
     if (this.form.value.stop) {
       replayConfig.stop = utils.toISOString(this.form.value.stop);

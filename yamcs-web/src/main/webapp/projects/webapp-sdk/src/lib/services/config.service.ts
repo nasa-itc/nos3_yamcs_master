@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { AuthInfo, CommandOption, InstanceConfig } from '../client';
 import { YaColumnInfo } from '../components/column-chooser/column-chooser.component';
 
@@ -12,6 +12,7 @@ export interface WebsiteConfig {
   commandClearanceEnabled: boolean;
   commandExports: boolean;
   twoStageCommanding: boolean;
+  showAliasColumns: boolean;
   preferredNamespace: string;
   collapseInitializedArguments: boolean;
   commandOptions: CommandOption[];
@@ -43,6 +44,7 @@ export interface OpiConfig {
   invalidColor: string;
   majorColor: string;
   minorColor: string;
+  legacyFontSizing: boolean;
 }
 
 export interface SiteLink {
@@ -62,7 +64,7 @@ export interface ExtraColumnInfo extends YaColumnInfo {
   after: string;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ConfigService {
   private websiteConfig: WebsiteConfig;
   private instanceConfig: InstanceConfig;

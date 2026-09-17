@@ -15,7 +15,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.yamcs.Spec.OptionType;
-import org.yamcs.tctm.ccsds.TcManagedParameters.PriorityScheme;
+import org.yamcs.tctm.ccsds.UplinkManagedParameters.PriorityScheme;
 
 public class SpecTest {
 
@@ -86,6 +86,19 @@ public class SpecTest {
             spec.addOption("bla", OptionType.STRING)
                     .withChoices("valid", "other");
             spec.validate(of("bla", "this is wrong"));
+        });
+    }
+
+    @Test
+    public void testListChoices() throws ValidationException {
+        Spec spec = new Spec();
+        spec.addOption("bla", OptionType.LIST)
+                .withElementType(OptionType.STRING)
+                .withChoices("a", "b", "c", "d");
+        spec.validate(of("bla", asList("a", "b")));
+
+        assertThrows(ValidationException.class, () -> {
+            spec.validate(of("bla", asList("a", "b", "x")));
         });
     }
 

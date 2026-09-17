@@ -1,15 +1,5 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  Inject,
-  OnDestroy,
-} from '@angular/core';
-import {
-  FormControl,
-  UntypedFormControl,
-  UntypedFormGroup,
-  Validators,
-} from '@angular/forms';
+import { Component, Inject, OnDestroy } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   DownloadParameterValuesOptions,
@@ -17,12 +7,12 @@ import {
   YaSelectOption,
   YamcsService,
   utils,
+  validators,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
 
 @Component({
   templateUrl: './export-parameter-data-dialog.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ExportParameterDataDialogComponent implements OnDestroy {
@@ -36,12 +26,18 @@ export class ExportParameterDataDialogComponent implements OnDestroy {
 
   downloadURL$ = new BehaviorSubject<string | null>(null);
 
-  form = new UntypedFormGroup({
-    start: new UntypedFormControl(null),
-    stop: new UntypedFormControl(null),
-    delimiter: new UntypedFormControl(null, Validators.required),
-    interval: new FormControl<number | null>(null),
-  });
+  form = new FormGroup(
+    {
+      start: new FormControl<string | null>(null),
+      stop: new FormControl<string | null>(null),
+      delimiter: new FormControl<string | null>(null, Validators.required),
+      interval: new FormControl<number | null>(null),
+      includeRaw: new FormControl<boolean | null>(false),
+    },
+    {
+      validators: [validators.dateRangeValidator('start', 'stop')],
+    },
+  );
 
   constructor(
     private dialogRef: MatDialogRef<ExportParameterDataDialogComponent>,
@@ -59,7 +55,8 @@ export class ExportParameterDataDialogComponent implements OnDestroy {
       start: data.start ? utils.toISOString(data.start) : '',
       stop: data.stop ? utils.toISOString(data.stop) : '',
       delimiter: 'TAB',
-      interval: '',
+      interval: null,
+      includeRaw: false,
     });
 
     this.formChangeSubscription = this.form.valueChanges.subscribe(() => {
@@ -77,16 +74,19 @@ export class ExportParameterDataDialogComponent implements OnDestroy {
     if (this.form.valid) {
       const dlOptions: DownloadParameterValuesOptions = {
         parameters: this.data.parameter,
-        delimiter: this.form.value['delimiter'],
+        delimiter: this.form.value.delimiter as any,
       };
-      if (this.form.value['start']) {
-        dlOptions.start = utils.toISOString(this.form.value['start']);
+      if (this.form.value.start) {
+        dlOptions.start = utils.toISOString(this.form.value.start);
       }
-      if (this.form.value['stop']) {
-        dlOptions.stop = utils.toISOString(this.form.value['stop']);
+      if (this.form.value.stop) {
+        dlOptions.stop = utils.toISOString(this.form.value.stop);
       }
-      if (this.form.value['interval']) {
-        dlOptions.interval = this.form.value['interval'];
+      if (this.form.value.interval) {
+        dlOptions.interval = this.form.value.interval;
+      }
+      if (this.form.value.includeRaw) {
+        dlOptions.extra = ['raw'];
       }
       const url = this.yamcs.yamcsClient.getParameterValuesDownloadURL(
         this.yamcs.instance!,

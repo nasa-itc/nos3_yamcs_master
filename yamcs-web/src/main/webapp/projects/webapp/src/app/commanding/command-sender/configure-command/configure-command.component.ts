@@ -1,7 +1,6 @@
 import { Location } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   input,
   OnDestroy,
@@ -12,7 +11,7 @@ import {
 import { UntypedFormControl } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatStepperIcon, MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule } from '@angular/material/stepper';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -21,8 +20,9 @@ import {
   Command,
   CommandHistoryEntry,
   ConfigService,
-  CreateTimelineItemRequest,
   MessageService,
+  SaveTimelineItemRequest,
+  utils,
   WebappSdkModule,
   WebsiteConfig,
   YamcsService,
@@ -30,23 +30,25 @@ import {
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
 import { MarkdownComponent } from '../../../shared/markdown/markdown.component';
+import {
+  ScheduleActivityDialogComponent,
+  ScheduleActivityDialogData,
+  ScheduleActivityDialogResult,
+} from '../../../shared/schedule-activity-dialog/schedule-activity-dialog.component';
 import { SignificanceLevelComponent } from '../../../shared/significance-level/significance-level.component';
 import { CommandFormComponent } from '../command-form/command-form.component';
 import { TemplateProvider } from '../command-form/TemplateProvider';
-import { ScheduleCommandDialogComponent } from '../schedule-command-dialog/schedule-command-dialog.component';
 import { SendCommandWizardStepComponent } from '../send-command-wizard-step/send-command-wizard-step.component';
 import { CommandConstraintsComponent } from './command-constraints.component';
 import { CommandHistoryTemplateProvider } from './CommandHistoryTemplateProvider';
 
 @Component({
   templateUrl: './configure-command.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommandConstraintsComponent,
     CommandFormComponent,
     MarkdownComponent,
     MatIconModule,
-    MatStepperIcon,
     MatStepperModule,
     SendCommandWizardStepComponent,
     SignificanceLevelComponent,
@@ -61,6 +63,9 @@ export class ConfigureCommandComponent
 
   @ViewChild('commandForm')
   commandForm: CommandFormComponent;
+
+  @ViewChild(CommandConstraintsComponent)
+  commandConstraints: CommandConstraintsComponent;
 
   config: WebsiteConfig;
 
@@ -161,6 +166,8 @@ export class ConfigureCommandComponent
     this.yamcs.yamcsClient
       .issueCommand(this.yamcs.instance!, this.yamcs.processor!, qname, {
         args: commandConfig.args,
+        disableTransmissionConstraints:
+          this.commandConstraints.isDisableConstraintChecking() || undefined,
         stream: commandConfig.stream,
         comment: commandConfig.comment,
         extra: commandConfig.extra,
@@ -192,8 +199,16 @@ export class ConfigureCommandComponent
 
   openScheduleCommandDialog() {
     this.dialog
-      .open(ScheduleCommandDialogComponent, {
+      .open<
+        ScheduleActivityDialogComponent,
+        ScheduleActivityDialogData,
+        ScheduleActivityDialogResult
+      >(ScheduleActivityDialogComponent, {
         width: '600px',
+        data: {
+          type: 'command',
+          name: `Run ${utils.getFilename(this.qualifiedName())}`,
+        },
       })
       .afterClosed()
       .subscribe((scheduleOptions) => {
@@ -203,12 +218,9 @@ export class ConfigureCommandComponent
           const qname = this.qualifiedName();
           const commandConfig = this.commandForm.getResult(true);
 
-          const options: CreateTimelineItemRequest = {
+          const options: SaveTimelineItemRequest = {
             type: 'ACTIVITY',
-            duration: '0s',
-            name: qname,
-            start: scheduleOptions['executionTime'],
-            tags: scheduleOptions['tags'],
+            ...scheduleOptions,
             activityDefinition: {
               type: 'COMMAND',
               args: {

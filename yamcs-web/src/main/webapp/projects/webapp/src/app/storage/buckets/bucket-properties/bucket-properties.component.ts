@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -8,20 +8,18 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject } from 'rxjs';
-import { StoragePageTemplateComponent } from '../../storage-page-template/storage-page-template.component';
+import { StoragePageComponent } from '../../storage-page/storage-page.component';
 import { AppStorageToolbarLabel } from '../../storage-toolbar/storage-toolbar-label.directive';
 import { AppStorageToolbar } from '../../storage-toolbar/storage-toolbar.component';
 import { BucketPageTabsComponent } from '../bucket-page-tabs/bucket-page-tabs.component';
 
 @Component({
   templateUrl: './bucket-properties.component.html',
-  styleUrl: './bucket-properties.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppStorageToolbar,
     AppStorageToolbarLabel,
     BucketPageTabsComponent,
-    StoragePageTemplateComponent,
+    StoragePageComponent,
     WebappSdkModule,
   ],
 })
@@ -38,16 +36,6 @@ export class BucketPropertiesComponent {
     this.storageClient.getBucket(this.name).then((bucket) => {
       this.bucket$.next(bucket);
     });
-  }
-
-  bucketSizePercentage(bucket: Bucket, ceil = false) {
-    var pct = (100 * bucket.size) / bucket.maxSize;
-    return ceil ? Math.min(100, pct) : pct;
-  }
-
-  objectCountPercentage(bucket: Bucket, ceil = false) {
-    var pct = (100 * bucket.numObjects) / bucket.maxObjects;
-    return ceil ? Math.min(100, pct) : pct;
   }
 
   zeroOrMore(value: number) {

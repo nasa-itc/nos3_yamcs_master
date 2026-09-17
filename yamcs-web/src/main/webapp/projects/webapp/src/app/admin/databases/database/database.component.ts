@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import {
@@ -9,7 +9,7 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbarLabel } from '../../shared/admin-toolbar/admin-toolbar-label.directive';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 
@@ -21,9 +21,8 @@ interface DatabaseObject {
 @Component({
   templateUrl: './database.component.html',
   styleUrl: './database.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    AdminPageTemplateComponent,
+    AdminPageComponent,
     AppAdminToolbar,
     AppAdminToolbarLabel,
     WebappSdkModule,

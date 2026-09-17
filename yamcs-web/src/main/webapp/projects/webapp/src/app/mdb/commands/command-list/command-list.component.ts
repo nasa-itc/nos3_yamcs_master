@@ -1,20 +1,16 @@
 import { SelectionModel } from '@angular/cdk/collections';
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  ViewChild,
-} from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   Command,
+  ConfigService,
   GetCommandsOptions,
   MessageService,
   WebappSdkModule,
+  WebsiteConfig,
   YaColumnChooser,
   YaColumnInfo,
   YamcsService,
@@ -25,12 +21,12 @@ import { CommandsDataSource } from './commands.datasource';
 
 @Component({
   templateUrl: './command-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule, SignificanceLevelComponent],
 })
 export class CommandListComponent implements AfterViewInit {
   shortName = false;
   pageSize = 100;
+  private config: WebsiteConfig;
 
   @ViewChild('top', { static: true })
   top: ElementRef;
@@ -64,8 +60,10 @@ export class CommandListComponent implements AfterViewInit {
     private route: ActivatedRoute,
     private router: Router,
     private messageService: MessageService,
+    configService: ConfigService,
   ) {
     title.setTitle('Commands');
+    this.config = configService.getConfig();
     this.dataSource = new CommandsDataSource(yamcs);
   }
 
@@ -123,7 +121,7 @@ export class CommandListComponent implements AfterViewInit {
           const aliasColumn = {
             id: namespace,
             label: namespace,
-            alwaysVisible: true,
+            visible: this.config.showAliasColumns,
           };
           aliasColumns.push(aliasColumn);
         }

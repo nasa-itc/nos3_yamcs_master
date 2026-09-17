@@ -1,17 +1,16 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { WebappSdkModule, YamcsService } from '@yamcs/webapp-sdk';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbarLabel } from '../../shared/admin-toolbar/admin-toolbar-label.directive';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 
 @Component({
   templateUrl: './rocksdb-database.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    AdminPageTemplateComponent,
+    AdminPageComponent,
     AppAdminToolbar,
     AppAdminToolbarLabel,
     WebappSdkModule,
