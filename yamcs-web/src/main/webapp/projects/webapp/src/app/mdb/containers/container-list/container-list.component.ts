@@ -1,20 +1,16 @@
 import { SelectionModel } from '@angular/cdk/collections';
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  ViewChild,
-} from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  ConfigService,
   Container,
   GetContainersOptions,
   MessageService,
   WebappSdkModule,
+  WebsiteConfig,
   YaColumnChooser,
   YaColumnInfo,
   YamcsService,
@@ -25,12 +21,12 @@ import { ContainersDataSource } from './containers.datasource';
 
 @Component({
   templateUrl: './container-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ExpressionComponent, WebappSdkModule],
 })
 export class ContainerListComponent implements AfterViewInit {
   shortName = false;
   pageSize = 100;
+  private config: WebsiteConfig;
 
   @ViewChild('top', { static: true })
   top: ElementRef;
@@ -67,8 +63,10 @@ export class ContainerListComponent implements AfterViewInit {
     private route: ActivatedRoute,
     private router: Router,
     private messageService: MessageService,
+    configService: ConfigService,
   ) {
     title.setTitle('Containers');
+    this.config = configService.getConfig();
     this.dataSource = new ContainersDataSource(yamcs);
   }
 
@@ -118,7 +116,7 @@ export class ContainerListComponent implements AfterViewInit {
           const aliasColumn = {
             id: namespace,
             label: namespace,
-            alwaysVisible: true,
+            visible: this.config.showAliasColumns,
           };
           aliasColumns.push(aliasColumn);
         }

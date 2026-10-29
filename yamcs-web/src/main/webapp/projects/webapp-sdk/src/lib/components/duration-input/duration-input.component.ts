@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  forwardRef,
-  ViewChild,
-} from '@angular/core';
+import { Component, ElementRef, forwardRef, ViewChild } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { YaIconAction } from '../icon-action/icon-action.component';
 
@@ -12,7 +6,6 @@ import { YaIconAction } from '../icon-action/icon-action.component';
   selector: 'ya-duration-input',
   templateUrl: './duration-input.component.html',
   styleUrl: './duration-input.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'ya-duration-input',
   },
@@ -43,14 +36,14 @@ export class YaDurationInput implements ControlValueAccessor {
       const seconds = parseInt(value, 10);
       if (!isNaN(seconds)) {
         this.formattedValue = secondsToHHMMSS(seconds);
-        this.onChange(`${seconds}s`);
+        //this.onChange(`${seconds}s`);
       } else {
         this.formattedValue = '00:00:00';
-        this.onChange('0s');
+        //this.onChange('0s');
       }
     } else {
       this.formattedValue = '00:00:00';
-      this.onChange('0s');
+      //this.onChange('0s');
     }
   }
 

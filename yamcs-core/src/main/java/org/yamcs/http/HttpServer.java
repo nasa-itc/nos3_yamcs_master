@@ -50,10 +50,10 @@ import org.yamcs.http.api.ProcessingApi;
 import org.yamcs.http.api.QueuesApi;
 import org.yamcs.http.api.ReplicationApi;
 import org.yamcs.http.api.RocksDbApi;
+import org.yamcs.http.api.SdlsApi;
 import org.yamcs.http.api.ServerApi;
 import org.yamcs.http.api.ServicesApi;
 import org.yamcs.http.api.SessionsApi;
-import org.yamcs.http.api.StreamArchiveApi;
 import org.yamcs.http.api.TableApi;
 import org.yamcs.http.api.TimeApi;
 import org.yamcs.http.api.TimeCorrelationApi;
@@ -126,6 +126,7 @@ public class HttpServer extends AbstractYamcsService {
 
     private String contextPath;
     private boolean reverseLookup;
+    public int maxAuthRequestsPerSecond;
     private int nThreads;
 
     // Cross-origin Resource Sharing (CORS) enables use of the HTTP API in non-official client web applications
@@ -190,6 +191,7 @@ public class HttpServer extends AbstractYamcsService {
         spec.addOption("maxHeaderSize", OptionType.INTEGER).withDefault(8192);
         spec.addOption("maxContentLength", OptionType.INTEGER).withDefault(65536);
         spec.addOption("maxPageSize", OptionType.INTEGER).withDefault(1000);
+        spec.addOption("maxAuthRequestsPerSecond", OptionType.INTEGER).withDefault(5);
         spec.addOption("cors", OptionType.MAP).withSpec(corsSpec);
         spec.addOption("webSocket", OptionType.MAP).withSpec(websocketSpec).withApplySpecDefaults(true);
         spec.addOption("bindings", OptionType.LIST)
@@ -249,6 +251,7 @@ public class HttpServer extends AbstractYamcsService {
         }
 
         reverseLookup = config.getBoolean("reverseLookup");
+        maxAuthRequestsPerSecond = config.getInt("maxAuthRequestsPerSecond");
 
         if (config.containsKey("cors")) {
             YConfiguration ycors = config.getConfig("cors");
@@ -301,10 +304,10 @@ public class HttpServer extends AbstractYamcsService {
         addApi(new QueuesApi(auditLog));
         addApi(new ReplicationApi());
         addApi(new RocksDbApi(auditLog));
+        addApi(new SdlsApi());
         addApi(new ServerApi(this));
         addApi(new ServicesApi());
         addApi(new SessionsApi());
-        addApi(new StreamArchiveApi());
         addApi(new TableApi());
         addApi(new TimeApi());
         addApi(new TimeCorrelationApi());
@@ -481,6 +484,10 @@ public class HttpServer extends AbstractYamcsService {
 
     public boolean getReverseLookup() {
         return reverseLookup;
+    }
+
+    public int getMaxAuthRequestsPerSecond() {
+        return maxAuthRequestsPerSecond;
     }
 
     public CorsConfig getCorsConfig() {

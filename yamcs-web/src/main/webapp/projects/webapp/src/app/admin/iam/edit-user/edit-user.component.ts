@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import {
   UntypedFormBuilder,
   UntypedFormControl,
@@ -16,7 +16,7 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 import {
   AddRolesDialogComponent,
@@ -25,8 +25,7 @@ import {
 
 @Component({
   templateUrl: './edit-user.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AdminPageTemplateComponent, AppAdminToolbar, WebappSdkModule],
+  imports: [AdminPageComponent, AppAdminToolbar, WebappSdkModule],
 })
 export class EditUserComponent implements OnDestroy {
   form: UntypedFormGroup;

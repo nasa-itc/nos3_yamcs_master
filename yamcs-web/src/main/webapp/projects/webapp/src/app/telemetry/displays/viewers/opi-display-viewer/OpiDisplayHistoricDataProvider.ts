@@ -1,4 +1,4 @@
-import { HistoricalDataProvider, NullablePoint, Widget } from '@yamcs/opi';
+import { HistoricalDataProvider, NullablePoint } from '@yamcs/opi';
 import {
   BackfillingSubscription,
   ConfigService,
@@ -7,11 +7,12 @@ import {
   utils,
 } from '@yamcs/webapp-sdk';
 import { Subscription } from 'rxjs';
-import { DyDataSource } from '../../../../shared/parameter-plot/DyDataSource';
-import { DyPlotData } from '../../../../shared/parameter-plot/DyPlotBuffer';
+import { DyDataSource } from './DyDataSource';
+import { DyPlotData } from './DyPlotBuffer';
 
 export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
-  private processedSamples: NullablePoint[] = [];
+  private processedSamples: NullablePoint[] = []; // Backing data
+  private renderSamples: NullablePoint[] = []; // What the widget actually receives
   private dataSource: DyDataSource;
 
   private subscriptions: Subscription[] = [];
@@ -19,7 +20,7 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
 
   constructor(
     pvName: string,
-    widget: Widget,
+    private onUpdate: () => void,
     private yamcs: YamcsService,
     synchronizer: Synchronizer,
     configService: ConfigService,
@@ -37,7 +38,7 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
 
     this.dataSource.data$.subscribe((data) => {
       this.processSamples(data);
-      widget.requestRepaint();
+      this.onUpdate();
     });
 
     // Autoscroll
@@ -45,19 +46,12 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
       const stop = this.yamcs.getMissionTime();
       const start = utils.subtractDuration(stop, this.yamcs.range$.value);
 
-      const startTime = start.getTime();
-      for (let i = 0; i < this.processedSamples.length; i++) {
-        const sample = this.processedSamples[i];
-        if (sample.x >= startTime && i > 0) {
-          this.processedSamples.splice(0, i);
-          break;
-        }
-      }
-
       this.dataSource.updateWindowOnly(start, stop);
-      this.addEdgeSamples(this.processedSamples);
-      widget.requestRepaint();
+      this.rebuildRenderSamples();
+
+      this.onUpdate();
     });
+
     this.subscriptions.push(sub);
 
     this.backfillSubscription = yamcs.yamcsClient.createBackfillingSubscription(
@@ -74,8 +68,10 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
 
   private processSamples(data: DyPlotData) {
     const points: NullablePoint[] = [];
+
     for (const sample of data.samples) {
       const t = sample[0].getTime();
+
       if (sample[1]) {
         const avg = sample[1][1];
         points.push({ x: t, y: avg });
@@ -84,8 +80,37 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
       }
     }
 
-    this.addEdgeSamples(points);
     this.processedSamples = points;
+    this.rebuildRenderSamples();
+  }
+
+  private rebuildRenderSamples() {
+    const { visibleStart, visibleStop } = this.dataSource;
+
+    if (!visibleStart || !visibleStop) {
+      this.renderSamples = this.processedSamples;
+      return;
+    }
+
+    const startTime = visibleStart.getTime();
+    const stopTime = visibleStop.getTime();
+
+    const points: NullablePoint[] = [];
+
+    for (const point of this.processedSamples) {
+      if (point.x < startTime) {
+        continue;
+      }
+
+      if (point.x > stopTime) {
+        break;
+      }
+
+      points.push(point);
+    }
+
+    this.addEdgeSamples(points);
+    this.renderSamples = points;
   }
 
   private addEdgeSamples(points: NullablePoint[]) {
@@ -117,7 +142,7 @@ export class OpiDisplayHistoricDataProvider implements HistoricalDataProvider {
   }
 
   getSamples(): NullablePoint[] {
-    return this.processedSamples;
+    return this.renderSamples;
   }
 
   disconnect(): void {

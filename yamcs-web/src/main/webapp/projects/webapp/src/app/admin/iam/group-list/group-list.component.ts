@@ -1,9 +1,4 @@
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ViewChild,
-} from '@angular/core';
+import { AfterViewInit, Component, ViewChild } from '@angular/core';
 import { UntypedFormControl } from '@angular/forms';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -15,13 +10,12 @@ import {
   WebappSdkModule,
   YamcsService,
 } from '@yamcs/webapp-sdk';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 
 @Component({
   templateUrl: './group-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AdminPageTemplateComponent, AppAdminToolbar, WebappSdkModule],
+  imports: [AdminPageComponent, AppAdminToolbar, WebappSdkModule],
 })
 export class GroupListComponent implements AfterViewInit {
   filterControl = new UntypedFormControl();

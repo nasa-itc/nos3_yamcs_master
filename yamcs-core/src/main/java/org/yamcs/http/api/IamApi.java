@@ -71,6 +71,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void listRoles(Context ctx, Empty request, Observer<ListRolesResponse> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         List<Role> roles = securityStore.getDirectory().getRoles();
         Collections.sort(roles, (p1, p2) -> p1.getName().compareTo(p2.getName()));
@@ -85,6 +86,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void getRole(Context ctx, GetRoleRequest request, Observer<RoleInfo> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         Role role = securityStore.getDirectory().getRole(request.getName());
         if (role == null) {
@@ -110,6 +112,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void listPrivileges(Context ctx, Empty request, Observer<ListPrivilegesResponse> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         List<SystemPrivilege> privileges = new ArrayList<>(securityStore.getSystemPrivileges());
         Collections.sort(privileges, (p1, p2) -> p1.getName().compareTo(p2.getName()));
@@ -123,15 +126,15 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void listUsers(Context ctx, Empty request, Observer<ListUsersResponse> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         Directory directory = securityStore.getDirectory();
         List<User> users = directory.getUsers();
         Collections.sort(users, (u1, u2) -> u1.getName().compareToIgnoreCase(u2.getName()));
 
-        var sensitiveDetails = ctx.user.hasSystemPrivilege(SystemPrivilege.ControlAccess);
         ListUsersResponse.Builder responseb = ListUsersResponse.newBuilder();
         for (User user : users) {
-            UserInfo userb = toUserInfo(user, sensitiveDetails, directory);
+            UserInfo userb = toUserInfo(user, true, directory);
             responseb.addUsers(userb);
         }
         observer.complete(responseb.build());
@@ -178,6 +181,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void getUser(Context ctx, GetUserRequest request, Observer<UserInfo> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         Directory directory = securityStore.getDirectory();
         String username = request.getName();
@@ -185,8 +189,7 @@ public class IamApi extends AbstractIamApi<Context> {
         if (user == null) {
             throw new NotFoundException();
         }
-        var sensitiveDetails = ctx.user.hasSystemPrivilege(SystemPrivilege.ControlAccess);
-        observer.complete(toUserInfo(user, sensitiveDetails, directory));
+        observer.complete(toUserInfo(user, true, directory));
     }
 
     @Override
@@ -355,6 +358,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void listGroups(Context ctx, Empty request, Observer<ListGroupsResponse> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         Directory directory = securityStore.getDirectory();
         List<Group> groups = directory.getGroups();
@@ -370,6 +374,7 @@ public class IamApi extends AbstractIamApi<Context> {
 
     @Override
     public void getGroup(Context ctx, GetGroupRequest request, Observer<GroupInfo> observer) {
+        ctx.checkSystemPrivilege(SystemPrivilege.ControlAccess);
         SecurityStore securityStore = YamcsServer.getServer().getSecurityStore();
         Directory directory = securityStore.getDirectory();
         String name = request.getName();
@@ -465,19 +470,21 @@ public class IamApi extends AbstractIamApi<Context> {
         observer.complete(toGroupInfo(group, true, directory));
     }
 
-    public static UserInfo toUserInfo(User user, boolean sensitiveDetails, Directory directory) {
+    public static UserInfo toUserInfo(User user, boolean details, Directory directory) {
         UserInfo.Builder userb;
         userb = UserInfo.newBuilder();
         userb.setName(user.getName());
-        userb.setActive(user.isActive());
-        userb.setSuperuser(user.isSuperuser());
         if (user.getDisplayName() != null) {
             userb.setDisplayName(user.getDisplayName());
         }
-        if (user.getEmail() != null) {
-            userb.setEmail(user.getEmail());
-        }
-        if (sensitiveDetails) {
+
+        if (details) {
+            userb.setActive(user.isActive());
+            userb.setSuperuser(user.isSuperuser());
+            if (user.getEmail() != null) {
+                userb.setEmail(user.getEmail());
+            }
+
             User createdBy = directory.getUser(user.getCreatedBy());
             if (createdBy != null) {
                 userb.setCreatedBy(toUserInfo(createdBy, false, directory));

@@ -1,10 +1,5 @@
 import { AsyncPipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  forwardRef,
-} from '@angular/core';
+import { ChangeDetectorRef, Component, forwardRef } from '@angular/core';
 import {
   ControlValueAccessor,
   NG_VALUE_ACCESSOR,
@@ -18,7 +13,6 @@ import tznames from './tznames';
 @Component({
   selector: 'ya-timezone-select',
   templateUrl: './timezone-select.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -160,4 +154,16 @@ export class YaTimezoneSelect implements ControlValueAccessor {
   }
 
   registerOnTouched(fn: any) {}
+
+  setDisabledState(isDisabled: boolean): void {
+    if (isDisabled) {
+      this.areaControl.disable();
+      this.locationControl.disable();
+      this.sublocationControl.disable();
+    } else {
+      this.areaControl.enable();
+      this.locationControl.enable();
+      this.sublocationControl.enable();
+    }
+  }
 }

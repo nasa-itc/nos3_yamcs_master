@@ -1,10 +1,10 @@
-import { Component, Inject, OnDestroy } from '@angular/core';
 import {
-  FormControl,
-  UntypedFormControl,
-  UntypedFormGroup,
-  Validators,
-} from '@angular/forms';
+  ChangeDetectionStrategy,
+  Component,
+  Inject,
+  OnDestroy,
+} from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import {
   DownloadParameterValuesOptions,
@@ -12,12 +12,14 @@ import {
   YaSelectOption,
   YamcsService,
   utils,
+  validators,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-export-archive-data-dialog',
   templateUrl: './export-archive-data-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [WebappSdkModule],
 })
 export class ExportArchiveDataDialogComponent implements OnDestroy {
@@ -37,13 +39,19 @@ export class ExportArchiveDataDialogComponent implements OnDestroy {
 
   downloadURL$ = new BehaviorSubject<string | null>(null);
 
-  form = new UntypedFormGroup({
-    start: new UntypedFormControl(null),
-    stop: new UntypedFormControl(null),
-    delimiter: new UntypedFormControl(null, Validators.required),
-    interval: new FormControl<number | null>(null),
-    header: new UntypedFormControl(null, Validators.required),
-  });
+  form = new FormGroup(
+    {
+      start: new FormControl<string | null>(null),
+      stop: new FormControl<string | null>(null),
+      delimiter: new FormControl<string | null>(null, Validators.required),
+      interval: new FormControl<number | null>(null),
+      header: new FormControl<string | null>(null, Validators.required),
+      includeRaw: new FormControl<boolean | null>(false),
+    },
+    {
+      validators: [validators.dateRangeValidator('start', 'stop')],
+    },
+  );
 
   constructor(
     private dialogRef: MatDialogRef<ExportArchiveDataDialogComponent>,
@@ -62,7 +70,8 @@ export class ExportArchiveDataDialogComponent implements OnDestroy {
       stop: utils.toISOString(stop),
       delimiter: 'TAB',
       header: 'QUALIFIED_NAME',
-      interval: '',
+      interval: null,
+      includeRaw: false,
     });
 
     this.formChangeSubscription = this.form.valueChanges.subscribe(() => {
@@ -79,8 +88,8 @@ export class ExportArchiveDataDialogComponent implements OnDestroy {
   private updateURL() {
     if (this.form.valid) {
       const dlOptions: DownloadParameterValuesOptions = {
-        delimiter: this.form.value['delimiter'],
-        header: this.form.value['header'],
+        delimiter: this.form.value.delimiter as any,
+        header: this.form.value.header as any,
       };
       if (this.data.parameterIds) {
         dlOptions.parameters = this.data.parameterIds;
@@ -88,14 +97,17 @@ export class ExportArchiveDataDialogComponent implements OnDestroy {
       if (this.data.list) {
         dlOptions.list = this.data.list;
       }
-      if (this.form.value['start']) {
-        dlOptions.start = utils.toISOString(this.form.value['start']);
+      if (this.form.value.start) {
+        dlOptions.start = utils.toISOString(this.form.value.start);
       }
-      if (this.form.value['stop']) {
-        dlOptions.stop = utils.toISOString(this.form.value['stop']);
+      if (this.form.value.stop) {
+        dlOptions.stop = utils.toISOString(this.form.value.stop);
       }
-      if (this.form.value['interval']) {
-        dlOptions.interval = this.form.value['interval'];
+      if (this.form.value.interval) {
+        dlOptions.interval = this.form.value.interval;
+      }
+      if (this.form.value.includeRaw) {
+        dlOptions.extra = ['raw'];
       }
       if (this.data.filename) {
         dlOptions.filename = this.data.filename;

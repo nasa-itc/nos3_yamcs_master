@@ -1,6 +1,5 @@
 import { APP_BASE_HREF } from '@angular/common';
-import { Inject, Injectable } from '@angular/core';
-import { Router } from '@angular/router';
+import { inject, Service } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import {
   Clearance,
@@ -16,14 +15,18 @@ import { FrameLossListener } from '../client/FrameLossListener';
 import { getDefaultProcessor } from '../utils';
 import { ConfigService } from './config.service';
 import { MessageService } from './message.service';
+import { NavigationService } from './navigation.service';
 
 /**
  * Singleton service for facilitating working with a websocket connection
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class YamcsService implements FrameLossListener, SessionListener {
+  private baseHref = inject(APP_BASE_HREF);
+  private messageService = inject(MessageService);
+  private configService = inject(ConfigService);
+  private navigationService = inject(NavigationService);
+
   readonly yamcsClient: YamcsClient;
 
   readonly connectionInfo$ = new BehaviorSubject<ConnectionInfo | null>(null);
@@ -38,13 +41,8 @@ export class YamcsService implements FrameLossListener, SessionListener {
 
   readonly sessionEnded$ = new BehaviorSubject<boolean>(false);
 
-  constructor(
-    @Inject(APP_BASE_HREF) baseHref: string,
-    private router: Router,
-    private messageService: MessageService,
-    private configService: ConfigService,
-  ) {
-    this.yamcsClient = new YamcsClient(baseHref, this, this);
+  constructor() {
+    this.yamcsClient = new YamcsClient(this.baseHref, this, this);
   }
 
   onFrameLoss() {
@@ -65,11 +63,11 @@ export class YamcsService implements FrameLossListener, SessionListener {
     }
   }
 
-  async switchContext(instance: string, processor?: string) {
-    let newContext = instance;
+  async switchContext(instance?: string, processor?: string) {
+    let newContext: string | undefined = instance;
     if (processor) {
       newContext += '__' + processor;
-    } else {
+    } else if (instance) {
       const instanceDetail = await this.yamcsClient.getInstance(instance);
       const defaultProcessor = getDefaultProcessor(instanceDetail);
       if (defaultProcessor) {
@@ -77,9 +75,7 @@ export class YamcsService implements FrameLossListener, SessionListener {
       }
     }
 
-    this.router.navigate(['/context-switch', newContext, this.router.url], {
-      skipLocationChange: true,
-    });
+    this.navigationService.refreshCurrentRoute(newContext);
   }
 
   private setInstanceContext(instanceId: string) {

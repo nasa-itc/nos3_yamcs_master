@@ -1,12 +1,6 @@
 import { Clipboard } from '@angular/cdk/clipboard';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  OnDestroy,
-  OnInit,
-  input,
-} from '@angular/core';
-import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
+import { Component, OnDestroy, OnInit, input } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -19,7 +13,6 @@ import {
   utils,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject } from 'rxjs';
-import { AlarmLevelComponent } from '../../../shared/alarm-level/alarm-level.component';
 import { HexComponent } from '../../../shared/hex/hex.component';
 import { ExportParameterDataDialogComponent } from '../export-parameter-data-dialog/export-parameter-data-dialog.component';
 import { ParameterValuesTableComponent } from '../parameter-values-table/parameter-values-table.component';
@@ -30,13 +23,7 @@ const defaultInterval = 'PT1H';
 @Component({
   templateUrl: './parameter-data-tab.component.html',
   styleUrl: './parameter-data-tab.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    AlarmLevelComponent,
-    HexComponent,
-    ParameterValuesTableComponent,
-    WebappSdkModule,
-  ],
+  imports: [HexComponent, ParameterValuesTableComponent, WebappSdkModule],
 })
 export class ParameterDataTabComponent implements OnInit, OnDestroy {
   qualifiedName = input.required<string>({ alias: 'parameter' });
@@ -57,10 +44,10 @@ export class ParameterDataTabComponent implements OnInit, OnDestroy {
   // range is actually applied.
   appliedInterval: string;
 
-  filterForm = new UntypedFormGroup({
-    interval: new UntypedFormControl(defaultInterval),
-    customStart: new UntypedFormControl(null),
-    customStop: new UntypedFormControl(null),
+  filterForm = new FormGroup({
+    interval: new FormControl<string>(defaultInterval, { nonNullable: true }),
+    customStart: new FormControl<string | null>(null),
+    customStop: new FormControl<string | null>(null),
   });
 
   dataSource: ParameterDataDataSource;
@@ -148,7 +135,7 @@ export class ParameterDataTabComponent implements OnInit, OnDestroy {
       this.filterForm.get('interval')!.setValue(defaultInterval);
     } else {
       this.validStop = this.yamcs.getMissionTime();
-      this.validStart = utils.subtractDuration(this.validStop, interval);
+      this.validStart = utils.subtractDuration(this.validStop, interval!);
       this.loadData();
     }
   }

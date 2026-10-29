@@ -1,22 +1,29 @@
-import { Component, Inject } from '@angular/core';
-import {
-  UntypedFormControl,
-  UntypedFormGroup,
-  Validators,
-} from '@angular/forms';
+import { ChangeDetectionStrategy, Component, Inject } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { WebappSdkModule, YamcsService, utils } from '@yamcs/webapp-sdk';
+import {
+  WebappSdkModule,
+  YamcsService,
+  utils,
+  validators,
+} from '@yamcs/webapp-sdk';
 
 @Component({
   selector: 'app-select-range-dialog',
   templateUrl: './select-range-dialog.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [WebappSdkModule],
 })
 export class SelectRangeDialogComponent {
-  form = new UntypedFormGroup({
-    start: new UntypedFormControl(null, Validators.required),
-    stop: new UntypedFormControl(null, Validators.required),
-  });
+  form = new FormGroup(
+    {
+      start: new FormControl<string | null>(null, Validators.required),
+      stop: new FormControl<string | null>(null, Validators.required),
+    },
+    {
+      validators: [validators.dateRangeValidator('start', 'stop')],
+    },
+  );
 
   constructor(
     private dialogRef: MatDialogRef<SelectRangeDialogComponent>,
@@ -36,8 +43,8 @@ export class SelectRangeDialogComponent {
   }
 
   select() {
-    const start = utils.toDate(this.form.value['start']);
-    const stop = utils.toDate(this.form.value['stop']);
+    const start = utils.toDate(this.form.value.start);
+    const stop = utils.toDate(this.form.value.stop);
     this.dialogRef.close({ start, stop });
   }
 }

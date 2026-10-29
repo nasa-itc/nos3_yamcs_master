@@ -1,7 +1,6 @@
 import { SelectionModel } from '@angular/cdk/collections';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   ElementRef,
@@ -12,9 +11,11 @@ import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { MatPaginator } from '@angular/material/paginator';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import {
+  ConfigService,
   GetParametersOptions,
   Synchronizer,
   WebappSdkModule,
+  WebsiteConfig,
   YaColumnChooser,
   YaColumnInfo,
   YaSelectOption,
@@ -65,7 +66,6 @@ export const PLIST_SOURCE_OPTIONS: YaSelectOption[] = [
 @Component({
   templateUrl: './parameters.component.html',
   styleUrl: './parameters.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ParametersComponent implements AfterViewInit, OnDestroy {
@@ -77,6 +77,8 @@ export class ParametersComponent implements AfterViewInit, OnDestroy {
 
   shortName = false;
   pageSize = 100;
+
+  private config: WebsiteConfig;
 
   // For use in this controller (immediately updated)
   private system: string | null = null;
@@ -120,7 +122,9 @@ export class ParametersComponent implements AfterViewInit, OnDestroy {
     private router: Router,
     private synchronizer: Synchronizer,
     changeDetection: ChangeDetectorRef,
+    private configService: ConfigService,
   ) {
+    this.config = this.configService.getConfig();
     this.dataSource = new ParametersDataSource(
       this.yamcs,
       this.synchronizer,
@@ -223,7 +227,7 @@ export class ParametersComponent implements AfterViewInit, OnDestroy {
         const aliasColumn = {
           id: namespace,
           label: namespace,
-          alwaysVisible: true,
+          visible: this.config.showAliasColumns,
         };
         aliasColumns.push(aliasColumn);
       }

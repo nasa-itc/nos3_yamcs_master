@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { Title } from '@angular/platform-browser';
 import {
@@ -6,13 +6,12 @@ import {
   WebappSdkModule,
   YamcsService,
 } from '@yamcs/webapp-sdk';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 
 @Component({
   templateUrl: './rocksdb-database-list.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AdminPageTemplateComponent, AppAdminToolbar, WebappSdkModule],
+  imports: [AdminPageComponent, AppAdminToolbar, WebappSdkModule],
 })
 export class RocksDbDatabasesComponent {
   displayedColumns = ['dataDir', 'tablespace', 'dbPath', 'actions'];

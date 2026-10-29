@@ -40,17 +40,17 @@ import io.netty.util.internal.PlatformDependent;
  *  1 byte version
  *  3 bytes spare
  *  8 bytes first_id =  first transaction in the file = file_id - used for consistency check(if someone renames the file)
- *  4 bytes page_size - number of transactions per page 
+ *  4 bytes page_size - number of transactions per page
  *  4 bytes max_pages - max number of pages (and the size of the index)
  * 
  *  8 bytes last_mod = last modification time
  *  4 bytes n =  number of full pages. If n=max_pages, the file is full, cannot be written to it
  *  4 bytes m = number of transactions on page n
  *  4 bytes firstMetadataPos - position of the first metadata transaction
- *  (max_pages+1) x 4 bytes idx - transaction index 
+ *  (max_pages+1) x 4 bytes idx - transaction index
  *      idx[i] (i=0..max_pages) - offset in the file where transaction with id id_first + i*page_size starts
- *      idx[i] = 0 -> no such transaction. this means num_tx < i*m
- *      idx[max_pages] -> pointer to the end of the file.
+ *      idx[i] = 0 -&gt; no such transaction. this means num_tx &lt; i*m
+ *      idx[max_pages] -&gt; pointer to the end of the file.
  * </pre>
  * 
  * transaction data:
@@ -260,6 +260,7 @@ public class ReplicationFile implements Closeable {
             this.readOnly = false;
             this.lastMetadataTxStart = Header2.HDR_IDX_OFFSET - METADATA_POS_OFFSET - 4;
             buf.position(hdr2.endOffset());
+            fc.force(true);
             log.info("Created new replication file {} pageSize: {}, maxPages:{}, maxFileSize: {}", path, hdr1.pageSize,
                     hdr1.maxPages, maxFileSize);
         } catch (IOException e) {
@@ -633,6 +634,7 @@ public class ReplicationFile implements Closeable {
         return new TxIterator();
     }
 
+    @Override
     public void close() {
         try {
             if (!readOnly) {

@@ -1,5 +1,5 @@
 import { SelectionModel } from '@angular/cdk/collections';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { Title } from '@angular/platform-browser';
@@ -27,7 +27,6 @@ const defaultInterval = 'NO_LIMIT';
 @Component({
   templateUrl: './activity-list.component.html',
   styleUrl: './activity-list.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ActivityDurationComponent, ActivityIconComponent, WebappSdkModule],
 })
 export class ActivityListComponent {
@@ -55,6 +54,7 @@ export class ActivityListComponent {
     { id: 'status', label: 'Status', alwaysVisible: true },
     { id: 'id', label: 'Id', alwaysVisible: true },
     { id: 'start', label: 'Start', visible: true },
+    { id: 'label', label: 'Label', visible: true },
     { id: 'type', label: 'Type', visible: true },
     { id: 'detail', label: 'Detail', visible: true },
     { id: 'duration', label: 'Duration', visible: true },

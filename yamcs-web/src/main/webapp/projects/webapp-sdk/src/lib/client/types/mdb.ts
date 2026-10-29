@@ -94,6 +94,16 @@ export interface ParameterType {
   oneStringValue?: string;
   zeroStringValue?: string;
   usedBy?: Parameter[];
+  initialValue?: string;
+  rawValidRange?: ValidRange;
+  engValidRange?: ValidRange;
+}
+
+export interface ValidRange {
+  minimum: number;
+  maximum: number;
+  minimumInclusive: boolean;
+  maximumInclusive: boolean;
 }
 
 export interface ArrayInfo {
@@ -242,6 +252,7 @@ export interface ArgumentType {
   oneStringValue?: string;
   dimensions?: ArgumentDimension[];
   elementType?: ArgumentType;
+  sizeInBits?: number;
 }
 
 export interface ArgumentDimension {
@@ -259,12 +270,7 @@ export interface ArgumentAssignment {
 
 export interface Significance {
   consequenceLevel:
-    | 'NONE'
-    | 'WATCH'
-    | 'WARNING'
-    | 'DISTRESS'
-    | 'CRITICAL'
-    | 'SEVERE';
+    'NONE' | 'WATCH' | 'WARNING' | 'DISTRESS' | 'CRITICAL' | 'SEVERE';
   reasonForWarning: string;
 }
 
@@ -289,12 +295,7 @@ export interface EnumRange {
 }
 
 export type AlarmLevelType =
-  | 'NORMAL'
-  | 'WATCH'
-  | 'WARNING'
-  | 'DISTRESS'
-  | 'CRITICAL'
-  | 'SEVERE';
+  'NORMAL' | 'WATCH' | 'WARNING' | 'DISTRESS' | 'CRITICAL' | 'SEVERE';
 
 export interface AlarmRange {
   level: AlarmLevelType;

@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Directive, inject, Signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { AppearanceService } from '../services/appearance.service';
 import { AuthService } from '../services/auth.service';
 import { MessageService } from '../services/message.service';
@@ -21,9 +22,10 @@ export abstract class BaseComponent {
   protected yamcs: YamcsService;
   protected routeData: Signal<Map<string, any>>;
 
+  protected detailPane$: Observable<boolean>;
+
   constructor() {
     this.changeDetection = inject(ChangeDetectorRef);
-    this.messageService = inject(MessageService);
     this.sdkBridge = inject(SdkBridge);
     this.synchronizer = inject(Synchronizer);
     this.title = inject(Title);
@@ -32,7 +34,10 @@ export abstract class BaseComponent {
     this.appearanceService = this.sdkBridge.appearanceService;
     this.router = this.sdkBridge.router;
     this.yamcs = this.sdkBridge.yamcs;
+    this.messageService = this.sdkBridge.messageService;
     this.routeData = this.sdkBridge.routeData.asReadonly();
+
+    this.detailPane$ = this.appearanceService.detailPane$.asObservable();
   }
 
   setTitle(title: string) {

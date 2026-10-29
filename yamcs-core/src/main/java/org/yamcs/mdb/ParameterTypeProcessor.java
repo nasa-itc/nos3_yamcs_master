@@ -67,6 +67,16 @@ public class ParameterTypeProcessor {
         doCalibrate(null, pval);
     }
 
+    /**
+     * Checks validity if a ValidRange is defined for the parameter type
+     */
+    public void checkValidity(ParameterValue pval) {
+        if (checkValidityRanges) {
+            ParameterType ptype = pdata.getParameterType(pval.getParameter());
+            doCheckValidity(ptype, pval);
+        }
+    }
+
     private void doCalibrate(ProcessingContext processingCtx, ParameterValue pval) {
         ParameterType ptype = pdata.getParameterType(pval.getParameter());
         Value rawValue = pval.getRawValue();
@@ -79,7 +89,7 @@ public class ParameterTypeProcessor {
             }
             pval.setEngValue(engValue);
             if (checkValidityRanges) {
-                checkValidity(ptype, pval);
+                doCheckValidity(ptype, pval);
             }
         } catch (XtceProcessingException e) {
             log.info("Exception calibrating {}: {}", pval, e);
@@ -172,7 +182,8 @@ public class ParameterTypeProcessor {
     private static Value convertToEnumerated(EnumeratedParameterType ept, Value rawValue) {
         switch (rawValue.getType()) {
         case UINT32:
-            return ValueUtility.getEnumeratedValue(rawValue.getUint32Value(), ept.calibrate(rawValue.getUint32Value()));
+            long uv = rawValue.getUint32Value() & 0xFFFFFFFFL;
+            return ValueUtility.getEnumeratedValue(uv, ept.calibrate(uv));
         case UINT64:
             return ValueUtility.getEnumeratedValue(rawValue.getUint64Value(), ept.calibrate(rawValue.getUint64Value()));
         case SINT32:
@@ -513,9 +524,9 @@ public class ParameterTypeProcessor {
         return engValue;
     }
 
-    private void checkValidity(ParameterType ptype, ParameterValue pval) {
-        if (ptype instanceof FloatParameterType) {
-            FloatValidRange fvr = ((FloatParameterType) ptype).getValidRange();
+    private void doCheckValidity(ParameterType ptype, ParameterValue pval) {
+        if (ptype instanceof FloatParameterType floatType) {
+            FloatValidRange fvr = floatType.getValidRange();
             if (fvr != null) {
                 Value v;
                 if (fvr.isValidRangeAppliesToCalibrated()) {
@@ -528,8 +539,8 @@ public class ParameterTypeProcessor {
                     pval.setInvalid();
                 }
             }
-        } else if (ptype instanceof IntegerParameterType) {
-            IntegerValidRange ivr = ((IntegerParameterType) ptype).getValidRange();
+        } else if (ptype instanceof IntegerParameterType intType) {
+            IntegerValidRange ivr = intType.getValidRange();
             if (ivr != null) {
                 Value v;
                 if (ivr.isValidRangeAppliesToCalibrated()) {

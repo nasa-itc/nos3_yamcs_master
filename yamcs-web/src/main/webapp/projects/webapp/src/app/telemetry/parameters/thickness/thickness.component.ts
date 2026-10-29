@@ -1,8 +1,8 @@
 import {
-  ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   Input,
+  numberAttribute,
 } from '@angular/core';
 import { WebappSdkModule } from '@yamcs/webapp-sdk';
 
@@ -10,13 +10,12 @@ import { WebappSdkModule } from '@yamcs/webapp-sdk';
   selector: 'app-thickness',
   templateUrl: './thickness.component.html',
   styleUrl: './thickness.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ThicknessComponent {
   options = [1, 2, 3, 4];
 
-  @Input()
+  @Input({ transform: numberAttribute })
   selectedThickness = 2;
 
   @Input()

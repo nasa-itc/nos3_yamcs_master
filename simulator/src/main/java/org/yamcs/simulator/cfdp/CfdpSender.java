@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yamcs.cfdp.CfdpTransactionId;
-import org.yamcs.cfdp.ChecksumCalculator;
+import org.yamcs.cfdp.ModularChecksumCalculator;
 import org.yamcs.cfdp.ChecksumType;
 import org.yamcs.cfdp.pdu.*;
 import org.yamcs.cfdp.pdu.AckPacket.FileDirectiveSubtypeCode;
@@ -147,8 +147,12 @@ public class CfdpSender {
 
     private void sendData() {
         long end = Math.min(dataOffset + PDU_SIZE, fileSize);
-        sendFileData(dataOffset, end, true);
-        dataOffset = end;
+        // don't send a File Data PDU when there is no data to send (e.g. a 0 byte file);
+        // per CFDP 4.6.1.1.9(C) the sender goes straight to EOF in that case
+        if (end > dataOffset) {
+            sendFileData(dataOffset, end, true);
+            dataOffset = end;
+        }
         if (dataOffset == fileSize) {
             eofSenderFuture = executor.scheduleAtFixedRate(() -> sendEof(), 0, 2000, TimeUnit.MILLISECONDS);
             dataFinished = true;
@@ -199,7 +203,7 @@ public class CfdpSender {
             abort();
         }
         if (addToChecksum) {
-            checksum += ChecksumCalculator.calculateChecksum(data);
+            checksum += ModularChecksumCalculator.calculateChecksum(data);
             checksum &= 0xFFFFFFFF;
         }
 

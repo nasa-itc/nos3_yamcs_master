@@ -1,8 +1,7 @@
-import { Overlay } from '@angular/cdk/overlay';
+import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
   AfterViewInit,
-  ChangeDetectionStrategy,
   Component,
   ElementRef,
   HostListener,
@@ -15,6 +14,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import {
+  DefaultSidebar,
   MouseTracker,
   TimeLocator,
   TimeRuler,
@@ -23,20 +23,23 @@ import {
 } from '@fqqb/timeline';
 import {
   ArchiveRecord,
+  AuthService,
   EditReplayProcessorRequest,
   Formatter,
   MessageService,
   Processor,
   ProcessorSubscription,
   Synchronizer,
+  User,
   WebappSdkModule,
+  YaTooltip,
   YamcsService,
   utils,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { StartReplayDialogComponent } from '../../shared/start-replay-dialog/start-replay-dialog.component';
-import { HoveredDateAnnotation } from '../../timeline/timeline-chart/HoveredDateAnnotation';
+import { HoveredDateAnnotation } from '../../timeline/HoveredDateAnnotation';
 import { DownloadDumpDialogComponent } from '../download-dump-dialog/download-dump-dialog.component';
 import { JumpToDialogComponent } from '../jump-to-dialog/jump-to-dialog.component';
 import { ArchiveRecordGroup } from '../model/ArchiveRecordGroup';
@@ -45,7 +48,6 @@ import { RGB } from '../model/RGB';
 import { ReplayOverlay } from '../model/ReplayOverlay';
 import { TitleBand } from '../model/TitleBand';
 import { ModifyReplayDialogComponent } from '../modify-replay-dialog/modify-replay-dialog.component';
-import { TimelineTooltipComponent } from '../timeline-tooltip/timeline-tooltip.component';
 
 const PACKETS_BG = new RGB(141, 182, 194);
 const PACKETS_FG = new RGB(70, 70, 70);
@@ -63,6 +65,14 @@ interface DateRange {
   stop: Date;
 }
 
+interface LegendOption {
+  id: string;
+  name: string;
+  bg: string;
+  fg: string;
+  checked: boolean;
+}
+
 function makeGradient(rgb: RGB) {
   return (
     'linear-gradient(to right, ' +
@@ -76,40 +86,10 @@ function makeGradient(rgb: RGB) {
 @Component({
   templateUrl: './archive-browser.component.html',
   styleUrl: './archive-browser.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [WebappSdkModule],
 })
 export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
-  legendOptions = [
-    {
-      id: 'packets',
-      name: 'Packets',
-      bg: makeGradient(PACKETS_BG),
-      fg: PACKETS_FG.toCssString(),
-      checked: true,
-    },
-    {
-      id: 'parameters',
-      name: 'Parameter groups',
-      bg: makeGradient(PARAMETERS_BG),
-      fg: PARAMETERS_FG.toCssString(),
-      checked: true,
-    },
-    {
-      id: 'commands',
-      name: 'Commands',
-      bg: makeGradient(COMMANDS_BG),
-      fg: COMMANDS_FG.toCssString(),
-      checked: false,
-    },
-    {
-      id: 'events',
-      name: 'Events',
-      bg: makeGradient(EVENTS_BG),
-      fg: EVENTS_FG.toCssString(),
-      checked: false,
-    },
-  ];
+  legendOptions: LegendOption[] = [];
 
   @ViewChild('container', { static: true })
   container: ElementRef;
@@ -126,9 +106,11 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
   viewportRange$ = new BehaviorSubject<DateRange | null>(null);
   tool$ = new BehaviorSubject<Tool>('hand');
 
-  private tooltipInstance: TimelineTooltipComponent;
+  private tooltipInstance: YaTooltip;
+  private tooltipOverlayRef?: OverlayRef;
   private packetNames: string[] = [];
   private subscriptions: Subscription[] = [];
+  private user: User;
 
   constructor(
     title: Title,
@@ -141,22 +123,64 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
     private messageService: MessageService,
     private synchronizer: Synchronizer,
     private formatter: Formatter,
+    authservice: AuthService,
   ) {
     title.setTitle('Archive browser');
+    this.user = authservice.getUser()!;
 
     const capabilities =
       yamcs.connectionInfo$.value?.instance?.capabilities || [];
-    if (capabilities.indexOf('ccsds-completeness') !== -1) {
-      this.legendOptions = [
-        {
-          id: 'completeness',
-          name: 'Completeness',
-          bg: makeGradient(COMPLETENESS_BG),
-          fg: COMPLETENESS_FG.toCssString(),
-          checked: true,
-        },
-        ...this.legendOptions,
-      ];
+    if (
+      this.mayReadPackets() &&
+      capabilities.indexOf('ccsds-completeness') !== -1
+    ) {
+      this.legendOptions.push({
+        id: 'completeness',
+        name: 'Completeness',
+        bg: makeGradient(COMPLETENESS_BG),
+        fg: COMPLETENESS_FG.toCssString(),
+        checked: true,
+      });
+    }
+
+    if (this.mayReadPackets()) {
+      this.legendOptions.push({
+        id: 'packets',
+        name: 'Packets',
+        bg: makeGradient(PACKETS_BG),
+        fg: PACKETS_FG.toCssString(),
+        checked: true,
+      });
+    }
+
+    if (this.mayReadParameters()) {
+      this.legendOptions.push({
+        id: 'parameters',
+        name: 'Parameter groups',
+        bg: makeGradient(PARAMETERS_BG),
+        fg: PARAMETERS_FG.toCssString(),
+        checked: true,
+      });
+    }
+
+    if (this.mayReadCommands()) {
+      this.legendOptions.push({
+        id: 'commands',
+        name: 'Commands',
+        bg: makeGradient(COMMANDS_BG),
+        fg: COMMANDS_FG.toCssString(),
+        checked: false,
+      });
+    }
+
+    if (this.mayReadEvents()) {
+      this.legendOptions.push({
+        id: 'events',
+        name: 'Events',
+        bg: makeGradient(EVENTS_BG),
+        fg: EVENTS_FG.toCssString(),
+        checked: false,
+      });
     }
 
     this.processor$.next(yamcs.getProcessor());
@@ -197,9 +221,10 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
       ])
       .withPush(false);
 
-    const overlayRef = this.overlay.create({ positionStrategy });
-    const tooltipPortal = new ComponentPortal(TimelineTooltipComponent);
-    this.tooltipInstance = overlayRef.attach(tooltipPortal).instance;
+    this.tooltipOverlayRef = this.overlay.create({ positionStrategy });
+    const tooltipPortal = new ComponentPortal(YaTooltip);
+    this.tooltipInstance =
+      this.tooltipOverlayRef.attach(tooltipPortal).instance;
   }
 
   @HostListener('mouseleave')
@@ -220,6 +245,7 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
 
   private initializeTimeline() {
     this.timeline = new Timeline(this.container.nativeElement);
+    this.timeline.leftSidebar = new DefaultSidebar(this.timeline);
 
     this.timeline.addViewportChangeListener((event) => {
       this.viewportRange$.next({
@@ -290,7 +316,7 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
     axis.label = 'UTC';
     axis.timezone = 'UTC';
     axis.frozen = true;
-    axis.fullHeight = 'underlay';
+    axis.grid = 'underlay';
 
     this.timeline.addViewportSelectionListener((evt) => {
       if (evt.selection) {
@@ -559,121 +585,124 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
       parameterPromise,
       commandPromise,
       eventPromise,
-    ]).then((responses) => {
-      const completenessGroups = responses[0];
-      const tmGroups = responses[1];
-      const parameterGroups = responses[2];
-      const commandGroups = responses[3];
-      const eventGroups = responses[4];
+    ])
+      .then((responses) => {
+        const completenessGroups = responses[0];
+        const tmGroups = responses[1];
+        const parameterGroups = responses[2];
+        const commandGroups = responses[3];
+        const eventGroups = responses[4];
 
-      for (const band of this.timeline.getBands()) {
-        if (!(band instanceof TimeRuler)) {
-          this.timeline.removeChild(band);
-        }
-      }
-      completenessGroups.sort((a, b) => a.name.localeCompare(b.name));
-      for (let i = 0; i < completenessGroups.length; i++) {
-        if (i === 0) {
-          new TitleBand(this.timeline, 'Completeness');
-        }
-        const group = completenessGroups[i];
-        const band = new IndexGroupBand(
-          this.timeline,
-          group.name,
-          COMPLETENESS_BG,
-          COMPLETENESS_FG,
-          this.formatter,
-        );
-        band.borderWidth = i === completenessGroups.length - 1 ? 1 : 0;
-        band.paddingBottom =
-          i === completenessGroups.length - 1 ? 20 : PADDING_TB;
-        band.setupTooltip(this.tooltipInstance);
-        band.loadData(group);
-      }
-
-      if (this.filterForm.value['packets']) {
-        for (let i = 0; i < this.packetNames.length; i++) {
-          if (i === 0) {
-            new TitleBand(this.timeline, 'Packets');
+        for (const band of this.timeline.getBands()) {
+          if (!(band instanceof TimeRuler)) {
+            this.timeline.removeChild(band);
           }
-          const packetName = this.packetNames[i];
+        }
+        completenessGroups.sort((a, b) => a.name.localeCompare(b.name));
+        for (let i = 0; i < completenessGroups.length; i++) {
+          if (i === 0) {
+            new TitleBand(this.timeline, 'Completeness');
+          }
+          const group = completenessGroups[i];
           const band = new IndexGroupBand(
             this.timeline,
-            packetName,
-            PACKETS_BG,
-            PACKETS_FG,
+            group.name,
+            COMPLETENESS_BG,
+            COMPLETENESS_FG,
             this.formatter,
           );
-          band.borderWidth = i === this.packetNames.length - 1 ? 1 : 0;
+          band.borderWidth = i === completenessGroups.length - 1 ? 1 : 0;
           band.paddingBottom =
-            i === this.packetNames.length - 1 ? 20 : PADDING_TB;
+            i === completenessGroups.length - 1 ? 20 : PADDING_TB;
           band.setupTooltip(this.tooltipInstance);
-          const group = tmGroups.find(
-            (candidate) => candidate.name === packetName,
-          );
-          if (group) {
-            band.loadData(group);
+          band.loadData(group);
+        }
+
+        if (this.filterForm.value['packets']) {
+          for (let i = 0; i < this.packetNames.length; i++) {
+            if (i === 0) {
+              new TitleBand(this.timeline, 'Packets');
+            }
+            const packetName = this.packetNames[i];
+            const band = new IndexGroupBand(
+              this.timeline,
+              packetName,
+              PACKETS_BG,
+              PACKETS_FG,
+              this.formatter,
+            );
+            band.borderWidth = i === this.packetNames.length - 1 ? 1 : 0;
+            band.paddingBottom =
+              i === this.packetNames.length - 1 ? 20 : PADDING_TB;
+            band.setupTooltip(this.tooltipInstance);
+            const group = tmGroups.find(
+              (candidate) => candidate.name === packetName,
+            );
+            if (group) {
+              band.loadData(group);
+            }
           }
         }
-      }
 
-      parameterGroups.sort((a, b) => a.name.localeCompare(b.name));
-      for (let i = 0; i < parameterGroups.length; i++) {
-        if (i === 0) {
-          new TitleBand(this.timeline, 'Parameter Groups');
+        parameterGroups.sort((a, b) => a.name.localeCompare(b.name));
+        for (let i = 0; i < parameterGroups.length; i++) {
+          if (i === 0) {
+            new TitleBand(this.timeline, 'Parameter Groups');
+          }
+          const group = parameterGroups[i];
+          const band = new IndexGroupBand(
+            this.timeline,
+            group.name,
+            PARAMETERS_BG,
+            PARAMETERS_FG,
+            this.formatter,
+          );
+          band.borderWidth = i === parameterGroups.length - 1 ? 1 : 0;
+          band.paddingBottom =
+            i === parameterGroups.length - 1 ? 20 : PADDING_TB;
+          band.setupTooltip(this.tooltipInstance);
+          band.loadData(group);
         }
-        const group = parameterGroups[i];
-        const band = new IndexGroupBand(
-          this.timeline,
-          group.name,
-          PARAMETERS_BG,
-          PARAMETERS_FG,
-          this.formatter,
-        );
-        band.borderWidth = i === parameterGroups.length - 1 ? 1 : 0;
-        band.paddingBottom = i === parameterGroups.length - 1 ? 20 : PADDING_TB;
-        band.setupTooltip(this.tooltipInstance);
-        band.loadData(group);
-      }
 
-      commandGroups.sort((a, b) => a.name.localeCompare(b.name));
-      for (let i = 0; i < commandGroups.length; i++) {
-        if (i === 0) {
-          new TitleBand(this.timeline, 'Commands');
+        commandGroups.sort((a, b) => a.name.localeCompare(b.name));
+        for (let i = 0; i < commandGroups.length; i++) {
+          if (i === 0) {
+            new TitleBand(this.timeline, 'Commands');
+          }
+          const group = commandGroups[i];
+          const band = new IndexGroupBand(
+            this.timeline,
+            group.name,
+            COMMANDS_BG,
+            COMMANDS_FG,
+            this.formatter,
+          );
+          band.borderWidth = i === commandGroups.length - 1 ? 1 : 0;
+          band.paddingBottom = i === commandGroups.length - 1 ? 30 : PADDING_TB;
+          band.setupTooltip(this.tooltipInstance);
+          band.loadData(group);
         }
-        const group = commandGroups[i];
-        const band = new IndexGroupBand(
-          this.timeline,
-          group.name,
-          COMMANDS_BG,
-          COMMANDS_FG,
-          this.formatter,
-        );
-        band.borderWidth = i === commandGroups.length - 1 ? 1 : 0;
-        band.paddingBottom = i === commandGroups.length - 1 ? 30 : PADDING_TB;
-        band.setupTooltip(this.tooltipInstance);
-        band.loadData(group);
-      }
 
-      eventGroups.sort((a, b) => a.name.localeCompare(b.name));
-      for (let i = 0; i < eventGroups.length; i++) {
-        if (i === 0) {
-          new TitleBand(this.timeline, 'Events');
+        eventGroups.sort((a, b) => a.name.localeCompare(b.name));
+        for (let i = 0; i < eventGroups.length; i++) {
+          if (i === 0) {
+            new TitleBand(this.timeline, 'Events');
+          }
+          const group = eventGroups[i];
+          const band = new IndexGroupBand(
+            this.timeline,
+            group.name,
+            EVENTS_BG,
+            EVENTS_FG,
+            this.formatter,
+          );
+          band.borderWidth = i === eventGroups.length - 1 ? 1 : 0;
+          band.paddingBottom = i === eventGroups.length - 1 ? 20 : PADDING_TB;
+          band.setupTooltip(this.tooltipInstance);
+          band.loadData(group);
         }
-        const group = eventGroups[i];
-        const band = new IndexGroupBand(
-          this.timeline,
-          group.name,
-          EVENTS_BG,
-          EVENTS_FG,
-          this.formatter,
-        );
-        band.borderWidth = i === eventGroups.length - 1 ? 1 : 0;
-        band.paddingBottom = i === eventGroups.length - 1 ? 20 : PADDING_TB;
-        band.setupTooltip(this.tooltipInstance);
-        band.loadData(group);
-      }
-    });
+      })
+      .catch((err) => this.messageService.showError(err));
   }
 
   private groupRecordsByName(records: ArchiveRecord[]) {
@@ -689,7 +718,28 @@ export class ArchiveBrowserComponent implements AfterViewInit, OnDestroy {
     return [...groupsByName.values()];
   }
 
+  mayControlProcessor() {
+    return this.user.hasSystemPrivilege('ControlProcessor');
+  }
+
+  mayReadPackets() {
+    return this.user.hasAnyObjectPrivilegeOfType('ReadPacket');
+  }
+
+  private mayReadParameters() {
+    return this.user.hasAnyObjectPrivilegeOfType('ReadParameter');
+  }
+
+  private mayReadCommands() {
+    return this.user.hasAnyObjectPrivilegeOfType('CommandHistory');
+  }
+
+  private mayReadEvents() {
+    return this.user.hasSystemPrivilege('ReadEvents');
+  }
+
   ngOnDestroy() {
+    this.tooltipOverlayRef?.dispose();
     this.processorSubscription?.cancel();
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
     this.timeline.disconnect();

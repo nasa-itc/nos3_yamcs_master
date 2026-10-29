@@ -1,5 +1,4 @@
 import {
-  ChangeDetectionStrategy,
   Component,
   computed,
   contentChildren,
@@ -21,12 +20,12 @@ export interface YaSelectOption {
   label: string;
   group?: boolean;
   icon?: string;
+  description?: string;
 }
 
 @Component({
   selector: 'ya-select',
   templateUrl: './select.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -56,6 +55,7 @@ export class YaSelect implements ControlValueAccessor {
   optionChildren = contentChildren(YaOption);
 
   selected = signal<string | null>(null);
+  isDisabled = signal(false);
 
   label = computed(() => {
     const selectedId = this.selected() || '';
@@ -97,4 +97,8 @@ export class YaSelect implements ControlValueAccessor {
   }
 
   registerOnTouched(fn: any) {}
+
+  setDisabledState(isDisabled: boolean): void {
+    this.isDisabled.set(isDisabled);
+  }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
@@ -12,6 +12,7 @@ import {
   Link,
   LinkSubscription,
   MessageService,
+  SdlsLinkConfig,
   WebappSdkModule,
   YamcsService,
 } from '@yamcs/webapp-sdk';
@@ -22,13 +23,13 @@ import { LinkService } from '../shared/link.service';
 
 @Component({
   templateUrl: './link.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [LinkStatusComponent, WebappSdkModule],
 })
 export class LinkComponent implements OnDestroy {
   link$ = new BehaviorSubject<Link | null>(null);
   cop1Config$ = new BehaviorSubject<Cop1Config | null>(null);
   cop1Status$ = new BehaviorSubject<Cop1Status | null>(null);
+  sdlsLinkConfig$ = new BehaviorSubject<SdlsLinkConfig | null>(null);
 
   private linkSubscription: LinkSubscription;
   private cop1Subscription: Cop1Subscription;
@@ -67,11 +68,21 @@ export class LinkComponent implements OnDestroy {
 
     this.cop1Status$.next(null);
     this.cop1Config$.next(null);
+    this.sdlsLinkConfig$.next(null);
 
     this.yamcs.yamcsClient.getLink(this.yamcs.instance!, name).then((link) => {
       this.link$.next(link);
       this.title.setTitle(name);
-      if (link.type.indexOf('Cop1Tc') !== -1) {
+      this.yamcs.yamcsClient
+        .getSdlsSpis(this.yamcs.instance!, name)
+        .then((sdlsLinkConfig) => {
+          if (sdlsLinkConfig.spis?.length) {
+            sdlsLinkConfig.spis.sort();
+            this.sdlsLinkConfig$.next(sdlsLinkConfig);
+          }
+        });
+
+      if (link.type.indexOf('Cop1Uplink') !== -1) {
         this.yamcs.yamcsClient
           .getCop1Config(this.yamcs.instance!, name)
           .then((cop1Config) => {

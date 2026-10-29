@@ -1,6 +1,7 @@
 package org.yamcs.tctm.ccsds;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.yamcs.ConfigurationException;
@@ -10,12 +11,13 @@ import org.yamcs.YConfiguration;
 import org.yamcs.cmdhistory.CommandHistoryPublisher;
 import org.yamcs.cmdhistory.CommandHistoryPublisher.AckStatus;
 import org.yamcs.commanding.PreparedCommand;
+import org.yamcs.security.sdls.SdlsSecurityAssociation;
 import org.yamcs.tctm.AbstractLink;
 import org.yamcs.tctm.AggregatedDataLink;
 import org.yamcs.tctm.Link;
 import org.yamcs.tctm.TcDataLink;
-import org.yamcs.tctm.ccsds.TcManagedParameters.PriorityScheme;
 import org.yamcs.tctm.ccsds.TransferFrameDecoder.CcsdsFrameType;
+import org.yamcs.tctm.ccsds.UplinkManagedParameters.PriorityScheme;
 import org.yamcs.tctm.ccsds.error.BchCltuGenerator;
 import org.yamcs.tctm.ccsds.error.CltuGenerator;
 import org.yamcs.tctm.ccsds.error.Ldpc256CltuGenerator;
@@ -26,7 +28,7 @@ import org.yamcs.utils.YObjectLoader;
 
 /**
  * Sends TC as TC frames (CCSDS 232.0-B-3) or TC frames embedded in CLTU (CCSDS 231.0-B-3).
- * 
+ *
  */
 public abstract class AbstractTcFrameLink extends AbstractLink implements AggregatedDataLink, TcDataLink {
     // all the TC frame links should move the TC frame config under this section, to allow having both TM and TC frame
@@ -48,7 +50,7 @@ public abstract class AbstractTcFrameLink extends AbstractLink implements Aggreg
 
     @Override
     public Spec getDefaultSpec() {
-        var spec = super.getDefaultSpec();
+        Spec spec = super.getDefaultSpec();
         spec = addDefaultOptions(spec);
         return spec;
     }
@@ -62,6 +64,13 @@ public abstract class AbstractTcFrameLink extends AbstractLink implements Aggreg
         spec.addOption("spacecraftId", OptionType.INTEGER);
         spec.addOption("physicalChannelName", OptionType.STRING);
         spec.addOption("errorDetection", OptionType.STRING);
+
+        Spec frameEncryptionSpec = new Spec();
+        frameEncryptionSpec.addOption("class", OptionType.STRING).withRequired(true);
+        frameEncryptionSpec.addOption("args", OptionType.ANY);
+        frameEncryptionSpec.addOption("spi", OptionType.INTEGER).withRequired(true);
+        frameEncryptionSpec.addOption("authMask", OptionType.STRING);
+        spec.addOption("encryption", OptionType.LIST).withElementType(OptionType.MAP).withSpec(frameEncryptionSpec);
 
         spec.addOption("frameLength", OptionType.INTEGER);
         spec.addOption("insertZoneLength", OptionType.INTEGER);
@@ -185,10 +194,10 @@ public abstract class AbstractTcFrameLink extends AbstractLink implements Aggreg
 
     /**
      * Ack the BD frames Note: the AD frames are acknowledged in the when the COP1 ack is received
-     * 
+     *
      * @param tf
      */
-    protected void ackBypassFrame(TcTransferFrame tf) {
+    protected void ackBypassFrame(UplinkTransferFrame tf) {
         if (tf.getCommands() != null) {
             for (PreparedCommand pc : tf.getCommands()) {
                 commandHistoryPublisher.publishAck(pc.getCommandId(), CommandHistoryPublisher.AcknowledgeSent_KEY,
@@ -197,7 +206,7 @@ public abstract class AbstractTcFrameLink extends AbstractLink implements Aggreg
         }
     }
 
-    protected void failBypassFrame(TcTransferFrame tf, String reason) {
+    protected void failBypassFrame(UplinkTransferFrame tf, String reason) {
         if (tf.getCommands() != null) {
             for (PreparedCommand pc : tf.getCommands()) {
                 commandHistoryPublisher.publishAck(pc.getCommandId(), CommandHistoryPublisher.AcknowledgeSent_KEY,
@@ -208,4 +217,23 @@ public abstract class AbstractTcFrameLink extends AbstractLink implements Aggreg
         }
     }
 
+    /**
+     * @param spi the Security Parameter Index (SPI) for which to get a Security Assocation (SA)
+     * @return the SA, or null if none is associated with the SPI
+     */
+    public SdlsSecurityAssociation getSdls(short spi) {
+        UplinkManagedParameters.SdlsInfo sdlsInfo = this.multiplexer.managedParameters.sdlsSecurityAssociations.get(spi);
+        if (sdlsInfo != null)
+            return sdlsInfo.sa();
+        return null;
+    }
+
+    public void setSpi(int vcId, short spi) {
+        this.multiplexer.managedParameters.getVcParams(vcId)
+                .encryptionSpi = spi;
+    }
+
+    public Collection<Short> getSpis() {
+        return this.multiplexer.managedParameters.sdlsSecurityAssociations.keySet();
+    }
 }

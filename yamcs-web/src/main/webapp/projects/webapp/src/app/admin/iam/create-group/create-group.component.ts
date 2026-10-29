@@ -1,5 +1,5 @@
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import {
   UntypedFormBuilder,
   UntypedFormControl,
@@ -16,7 +16,7 @@ import {
   YamcsService,
 } from '@yamcs/webapp-sdk';
 import { BehaviorSubject } from 'rxjs';
-import { AdminPageTemplateComponent } from '../../shared/admin-page-template/admin-page-template.component';
+import { AdminPageComponent } from '../../shared/admin-page/admin-page.component';
 import { AppAdminToolbarLabel } from '../../shared/admin-toolbar/admin-toolbar-label.directive';
 import { AppAdminToolbar } from '../../shared/admin-toolbar/admin-toolbar.component';
 import {
@@ -26,9 +26,8 @@ import {
 
 @Component({
   templateUrl: './create-group.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    AdminPageTemplateComponent,
+    AdminPageComponent,
     AppAdminToolbar,
     AppAdminToolbarLabel,
     WebappSdkModule,
